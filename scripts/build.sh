@@ -6,7 +6,12 @@ build_root=${1:?Usage: build.sh ABSOLUTE_BUILD_DIRECTORY}
 mkdir -p "$build_root" "$port_root/logs" "$port_root/artifacts"
 git clone https://gitlab.com/OrangeFox/sync.git "$build_root/sync-tools"
 git -C "$build_root/sync-tools" checkout 53a303ecfb622c516082d3e61dbaa7d9f02f0120
-"$build_root/sync-tools/orangefox_sync.sh" --branch 12.1 --path "$build_root/android" 2>&1 | tee "$port_root/logs/sync.log"
+# The upstream tool resolves its bundled patches relative to its working directory.
+(
+    cd "$build_root/sync-tools"
+    test -f patches/patch-manifest-fox_12.1.diff
+    ./orangefox_sync.sh --branch 12.1 --path "$build_root/android"
+) 2>&1 | tee "$port_root/logs/sync.log"
 cd "$build_root/android"
 mkdir -p device/google/coral
 tar -C "$port_root" --exclude=.git --exclude=logs --exclude=artifacts -cf - . | tar -C device/google/coral -xf -
