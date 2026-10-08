@@ -14,7 +14,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Import pinned upstream device tree once
         shell: bash
         run: |
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 350
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
       - name: Prepare build host
@@ -48,6 +48,13 @@ jobs:
           echo "$HOME/bin" >> "$GITHUB_PATH"
           git config --global user.name recovery-builder
           git config --global user.email recovery-builder@users.noreply.github.com
+          # Give memory-heavy C++ links room without increasing build parallelism.
+          coral_swap_file="$RUNNER_TEMP/orangefox-swap"
+          sudo fallocate -l 8G "$coral_swap_file"
+          sudo chmod 600 "$coral_swap_file"
+          sudo mkswap "$coral_swap_file"
+          sudo swapon "$coral_swap_file"
+          free -h
           df -h
       - name: Sync and build boot recovery
         shell: bash
@@ -56,13 +63,13 @@ jobs:
         run: bash scripts/build.sh "$RUNNER_TEMP/orangefox"
       - name: Preserve logs even on failure
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coral-build-logs-${{ github.run_id }}
           path: logs/
           if-no-files-found: warn
       - name: Upload structurally validated experimental image
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: OrangeFox-unofficial-coral-${{ github.run_id }}
           path: artifacts/

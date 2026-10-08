@@ -53,8 +53,25 @@ trap 'status=$?; echo "ERROR: line $LINENO: $BASH_COMMAND (exit $status)" >&2' E
 echo "envsetup returned $setup_status; checking build functions"
 declare -F lunch >/dev/null
 declare -F mka >/dev/null
+# Use the host CPU count, capped at four jobs for the 16 GiB hosted runner.
+build_jobs=${BUILD_JOBS:-$(nproc)}
+[[ "$build_jobs" =~ ^[1-9][0-9]*$ ]] || { echo 'BUILD_JOBS must be a positive integer'; exit 1; }
+(( build_jobs <= 4 )) || build_jobs=4
+export WITH_TIDY=false
+resource_monitor() {
+    while :; do
+        date -u '+%Y-%m-%dT%H:%M:%SZ'
+        free -m
+        df -h "$build_root"
+        sleep 60
+    done
+}
+resource_monitor > "$port_root/logs/resources.log" 2>&1 &
+monitor_pid=$!
+trap 'kill "$monitor_pid" 2>/dev/null || true' EXIT
+echo "Building with $build_jobs jobs; host CPUs: $(nproc)"
 lunch twrp_coral-eng
-mka bootimage -j2 2>&1 | tee "$port_root/logs/build.log"
+mka bootimage -j"$build_jobs" 2>&1 | tee "$port_root/logs/build.log"
 out=out/target/product/coral
 image="$out/boot.img"
 test -s "$image"
