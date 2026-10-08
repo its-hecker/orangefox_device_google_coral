@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -eo pipefail
+port_root=$(cd "$(dirname "$0")/.." && pwd)
+build_root=${1:?Usage: build.sh ABSOLUTE_BUILD_DIRECTORY}
+[[ "$build_root" = /* ]] || { echo 'Use an absolute build directory'; exit 1; }
+mkdir -p "$build_root" "$port_root/logs" "$port_root/artifacts"
+git clone https://gitlab.com/OrangeFox/sync.git "$build_root/sync-tools"
+git -C "$build_root/sync-tools" checkout 53a303ecfb622c516082d3e61dbaa7d9f02f0120
+"$build_root/sync-tools/orangefox_sync.sh" --branch 12.1 --path "$build_root/android" 2>&1 | tee "$port_root/logs/sync.log"
+cd "$build_root/android"
+mkdir -p device/google/coral
+tar -C "$port_root" --exclude=.git --exclude=logs --exclude=artifacts -cf - . | tar -C device/google/coral -xf -
+# Resolve the dependencies supplied by the upstream device tree. Avoid implicit
+# roomservice branch selection, particularly for the kernel.
+python3 - <<'PY'
+import json, pathlib, xml.etree.ElementTree as ET
+root = ET.Element('manifest')
+ET.SubElement(root, 'remote', name='coral-aosp', fetch='https://android.googlesource.com/')
+ET.SubElement(root, 'remote', name='coral-github', fetch='https://github.com/')
+for dep in json.loads(pathlib.Path('device/google/coral/twrp.dependencies').read_text()):
+    aosp = dep['remote'] == 'aosp'
+    revision = dep.get('branch', '9d2fb45d1fc6e11ac7e03e73c772b69ce158ea0a')
+    ET.SubElement(root, 'project', name=dep['repository'] if aosp else 'TeamWin/' + dep['repository'], path=dep['target_path'], remote='coral-aosp' if aosp else 'coral-github', revision=revision)
+pathlib.Path('.repo/local_manifests').mkdir(exist_ok=True)
+ET.ElementTree(root).write('.repo/local_manifests/coral.xml', encoding='unicode')
+PY
+repo sync -c -j4 --no-clone-bundle --no-tags 2>&1 | tee "$port_root/logs/dependencies.log"
+export FOX_BUILD_DEVICE=coral
+source device/google/coral/vendorsetup.sh
+source build/envsetup.sh
+lunch twrp_coral-eng
+mka bootimage -j2 2>&1 | tee "$port_root/logs/build.log"
+out=out/target/product/coral
+image="$out/boot.img"
+test -s "$image"
+python3 "$port_root/scripts/validate_image.py" "$image"
+cp "$image" "$port_root/artifacts/OrangeFox-unofficial-coral.img"
+repo manifest -r -o "$port_root/artifacts/source-manifest.xml"
+git -C "$port_root" rev-parse HEAD > "$port_root/artifacts/device-tree-commit.txt"
+cd "$port_root/artifacts"
+sha256sum OrangeFox-unofficial-coral.img > SHA256SUMS
