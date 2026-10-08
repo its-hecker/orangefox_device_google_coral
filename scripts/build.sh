@@ -10,6 +10,8 @@ git -C "$build_root/sync-tools" checkout 53a303ecfb622c516082d3e61dbaa7d9f02f012
 (
     cd "$build_root/sync-tools"
     test -f patches/patch-manifest-fox_12.1.diff
+    # The pinned upstream script looks for this patch one directory too high.
+    ln -s patches/patch-vendor-twrp-fox_12.1.diff patch-vendor-twrp-fox_12.1.diff
     ./orangefox_sync.sh --branch 12.1 --path "$build_root/android"
 ) 2>&1 | tee "$port_root/logs/sync.log"
 cd "$build_root/android"
@@ -29,7 +31,11 @@ for dep in json.loads(pathlib.Path('device/google/coral/twrp.dependencies').read
 pathlib.Path('.repo/local_manifests').mkdir(exist_ok=True)
 ET.ElementTree(root).write('.repo/local_manifests/coral.xml', encoding='unicode')
 PY
-repo sync -c -j4 --no-clone-bundle --no-tags 2>&1 | tee "$port_root/logs/dependencies.log"
+# Sync only the newly declared device dependencies. The legacy sync tool
+# deliberately replaces repo-managed TWRP with a standalone OrangeFox clone.
+# A whole-tree repo sync here would attempt to overwrite that checkout.
+mapfile -t dependency_paths < <(python3 -c 'import json; print("\n".join(d["target_path"] for d in json.load(open("device/google/coral/twrp.dependencies"))))')
+repo sync -c -j4 --no-clone-bundle --no-tags "${dependency_paths[@]}" 2>&1 | tee "$port_root/logs/dependencies.log"
 export FOX_BUILD_DEVICE=coral
 source device/google/coral/vendorsetup.sh
 source build/envsetup.sh
