@@ -4,6 +4,9 @@ port_root=$(cd "$(dirname "$0")/.." && pwd)
 build_root=${1:?Usage: build.sh ABSOLUTE_BUILD_DIRECTORY}
 [[ "$build_root" = /* ]] || { echo 'Use an absolute build directory'; exit 1; }
 mkdir -p "$build_root" "$port_root/logs" "$port_root/artifacts"
+exec > >(tee -a "$port_root/logs/session.log") 2>&1
+set -E
+trap 'status=$?; echo "ERROR: line $LINENO: $BASH_COMMAND (exit $status)" >&2' ERR
 git clone https://gitlab.com/OrangeFox/sync.git "$build_root/sync-tools"
 git -C "$build_root/sync-tools" checkout 53a303ecfb622c516082d3e61dbaa7d9f02f0120
 # The upstream tool resolves its bundled patches relative to its working directory.
@@ -38,7 +41,18 @@ mapfile -t dependency_paths < <(python3 -c 'import json; print("\n".join(d["targ
 repo sync -c -j4 --no-clone-bundle --no-tags "${dependency_paths[@]}" 2>&1 | tee "$port_root/logs/dependencies.log"
 export FOX_BUILD_DEVICE=coral
 source device/google/coral/vendorsetup.sh
+# Android envsetup is an interactive shell initializer and uses optional
+# probes that return nonzero. Source it without errexit, then check that the
+# required build functions exist. Keep strict failure handling for lunch/build.
+set +e
+trap - ERR
 source build/envsetup.sh
+setup_status=$?
+set -e
+trap 'status=$?; echo "ERROR: line $LINENO: $BASH_COMMAND (exit $status)" >&2' ERR
+echo "envsetup returned $setup_status; checking build functions"
+declare -F lunch >/dev/null
+declare -F mka >/dev/null
 lunch twrp_coral-eng
 mka bootimage -j2 2>&1 | tee "$port_root/logs/build.log"
 out=out/target/product/coral
