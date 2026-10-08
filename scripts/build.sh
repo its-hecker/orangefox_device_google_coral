@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 set -eo pipefail
 port_root=$(cd "$(dirname "$0")/.." && pwd)
-build_root=${1:?Usage: build.sh ABSOLUTE_BUILD_DIRECTORY}
+build_root=${1:?Usage: build.sh ABSOLUTE_BUILD_DIRECTORY [all|kernel|recovery] [CHECKPOINT_DIRECTORY]}
+build_stage=${2:-all}
+checkpoint=${3:-$port_root/kernel-checkpoint}
 [[ "$build_root" = /* ]] || { echo 'Use an absolute build directory'; exit 1; }
+case "$build_stage" in
+    all|kernel|recovery) ;;
+    *) echo 'Build stage must be all, kernel or recovery'; exit 1 ;;
+esac
+[[ "$checkpoint" = /* ]] || { echo 'Use an absolute checkpoint directory'; exit 1; }
 mkdir -p "$build_root" "$port_root/logs" "$port_root/artifacts"
 exec > >(tee -a "$port_root/logs/session.log") 2>&1
 set -E
@@ -19,7 +26,7 @@ git -C "$build_root/sync-tools" checkout 53a303ecfb622c516082d3e61dbaa7d9f02f012
 ) 2>&1 | tee "$port_root/logs/sync.log"
 cd "$build_root/android"
 mkdir -p device/google/coral
-tar -C "$port_root" --exclude=.git --exclude=logs --exclude=artifacts -cf - . | tar -C device/google/coral -xf -
+tar -C "$port_root" --exclude=.git --exclude=logs --exclude=artifacts --exclude=kernel-checkpoint --exclude=ci-kernel --exclude=__pycache__ -cf - . | tar -C device/google/coral -xf -
 # Resolve the dependencies supplied by the upstream device tree. Avoid implicit
 # roomservice branch selection, particularly for the kernel.
 python3 - <<'PY'
@@ -39,6 +46,9 @@ PY
 # A whole-tree repo sync here would attempt to overwrite that checkout.
 mapfile -t dependency_paths < <(python3 -c 'import json; print("\n".join(d["target_path"] for d in json.load(open("device/google/coral/twrp.dependencies"))))')
 repo sync -c -j4 --no-clone-bundle --no-tags "${dependency_paths[@]}" 2>&1 | tee "$port_root/logs/dependencies.log"
+if [[ "$build_stage" = recovery ]]; then
+    python3 "$port_root/scripts/kernel_checkpoint.py" import "$build_root/android" "$port_root" "$checkpoint"
+fi
 export FOX_BUILD_DEVICE=coral
 source device/google/coral/vendorsetup.sh
 # Android envsetup is an interactive shell initializer and uses optional
@@ -63,19 +73,38 @@ resource_monitor() {
         date -u '+%Y-%m-%dT%H:%M:%SZ'
         free -m
         df -h "$build_root"
+        # Ninja buffers each task's output until completion. Show kernel progress
+        # and resource use while the long kernel task is still running.
+        kernel_out="$build_root/android/out/target/product/coral/obj/KERNEL_OBJ"
+        if [[ -d "$kernel_out" ]]; then
+            echo "Kernel object files: $(find "$kernel_out" -name '*.o' -type f | wc -l)"
+        fi
+        ps -eo comm,pcpu,pmem --sort=-pcpu | head -n 8 || true
         sleep 60
     done
 }
-resource_monitor > "$port_root/logs/resources.log" 2>&1 &
+resource_monitor > >(tee "$port_root/logs/resources.log") 2>&1 &
 monitor_pid=$!
 trap 'kill "$monitor_pid" 2>/dev/null || true' EXIT
-echo "Building with $build_jobs jobs; host CPUs: $(nproc)"
+echo "Building stage $build_stage with $build_jobs jobs; host CPUs: $(nproc)"
 lunch twrp_coral-eng
+if [[ "$build_stage" = kernel ]]; then
+    # Run separately so the two nested kernel make processes do not compete.
+    mka kernel -j"$build_jobs" 2>&1 | tee "$port_root/logs/kernel.log"
+    mka dtbimage -j"$build_jobs" 2>&1 | tee "$port_root/logs/dtb.log"
+    python3 "$port_root/scripts/kernel_checkpoint.py" export "$build_root/android" "$port_root" "$checkpoint"
+    exit 0
+fi
 mka bootimage -j"$build_jobs" 2>&1 | tee "$port_root/logs/build.log"
 out=out/target/product/coral
 image="$out/boot.img"
 test -s "$image"
-python3 "$port_root/scripts/validate_image.py" "$image"
+if [[ "$build_stage" = recovery ]]; then
+    python3 "$port_root/scripts/validate_image.py" "$image" --kernel "$checkpoint/Image.lz4" --dtb "$checkpoint/dtb.img"
+    cp "$checkpoint/metadata.json" "$port_root/artifacts/kernel-metadata.json"
+else
+    python3 "$port_root/scripts/validate_image.py" "$image"
+fi
 cp "$image" "$port_root/artifacts/OrangeFox-unofficial-coral.img"
 repo manifest -r -o "$port_root/artifacts/source-manifest.xml"
 git -C "$port_root" rev-parse HEAD > "$port_root/artifacts/device-tree-commit.txt"

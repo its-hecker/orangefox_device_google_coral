@@ -22,4 +22,9 @@ else
   TARGET_RECOVERY_UI_MARGIN_HEIGHT := 165
 
   include device/google/coral/BoardConfig-common.mk
+
+  # Created only after scripts/kernel_checkpoint.py verifies the CI artifact.
+  ifneq ($(wildcard device/google/coral/ci-kernel/verified),)
+    include device/google/coral/ci/prebuilt-kernel.mk
+  endif
 endif

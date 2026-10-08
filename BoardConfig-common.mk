@@ -65,6 +65,9 @@ BOARD_INCLUDE_DTB_IN_BOOTIMG := true
 BOARD_BOOT_HEADER_VERSION := 2
 BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
 TARGET_KERNEL_ADDITIONAL_FLAGS := DTC=$(shell pwd)/prebuilts/tools-lineage/$(HOST_OS)-x86/dtc/dtc
+# The vendor kernel rules use nproc --all independently of Ninja's job limit.
+# Keep their nested make invocation within the hosted runner's CPU budget.
+TARGET_KERNEL_ADDITIONAL_FLAGS += -j4
 
 # DTBO partition definitions
 BOARD_DTBOIMG_PARTITION_SIZE := 8388608
