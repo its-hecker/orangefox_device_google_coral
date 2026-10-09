@@ -1024,6 +1024,7 @@ PRODUCT_PACKAGES += \
     qcom_decrypt_fbe \
     qseecomd.recovery \
     android.hardware.gatekeeper@1.0-service-qti.recovery \
+    android.hardware.gatekeeper@1.0-impl-qti.recovery \
     android.hardware.keymaster@4.1-service.citadel.recovery \
     android.hardware.keymaster@4.0-service-qti.recovery \
     android.hardware.weaver@1.0-service.citadel.recovery \

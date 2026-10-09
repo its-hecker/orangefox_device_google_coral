@@ -49,6 +49,20 @@ cc_prebuilt_binary {
     },
 }
 
+// The service loads this implementation through HIDL rather than DT_NEEDED.
+// Package it in the ramdisk so recovery does not depend on a mounted vendor.
+cc_prebuilt_library_shared {
+    name: "android.hardware.gatekeeper@1.0-impl-qti",
+    compile_multilib: "64",
+    srcs: ["prebuilts/system/lib64/hw/android.hardware.gatekeeper@1.0-impl-qti.so"],
+    relative_install_path: "hw",
+    recovery_available: true,
+    check_elf_files: false,
+    strip: {
+        none: true,
+    },
+}
+
 cc_prebuilt_binary {
     name: "android.hardware.keymaster@4.1-service.citadel",
     srcs: ["prebuilts/system/bin/android.hardware.keymaster@4.1-service.citadel"],

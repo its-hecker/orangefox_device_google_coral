@@ -100,10 +100,10 @@ out=out/target/product/coral
 image="$out/boot.img"
 test -s "$image"
 if [[ "$build_stage" = recovery ]]; then
-    python3 "$port_root/scripts/validate_image.py" "$image" --kernel "$checkpoint/Image.lz4" --dtb "$checkpoint/dtb.img"
+    python3 "$port_root/scripts/validate_image.py" "$image" --kernel "$checkpoint/Image.lz4" --dtb "$checkpoint/dtb.img" --keymaster-version "$OF_DEFAULT_KEYMASTER_VERSION"
     cp "$checkpoint/metadata.json" "$port_root/artifacts/kernel-metadata.json"
 else
-    python3 "$port_root/scripts/validate_image.py" "$image"
+    python3 "$port_root/scripts/validate_image.py" "$image" --keymaster-version "$OF_DEFAULT_KEYMASTER_VERSION"
 fi
 cp "$image" "$port_root/artifacts/OrangeFox-unofficial-coral.img"
 repo manifest -r -o "$port_root/artifacts/source-manifest.xml"

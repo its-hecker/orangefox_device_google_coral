@@ -3,10 +3,12 @@
 import argparse
 import pathlib
 import struct
+from validate_recovery_runtime import validate_runtime
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('image', type=pathlib.Path)
 parser.add_argument('--kernel', type=pathlib.Path)
 parser.add_argument('--dtb', type=pathlib.Path)
+parser.add_argument('--keymaster-version', help='Check Coral decryption startup using the build configuration')
 args = parser.parse_args()
 image = args.image.read_bytes()
 assert 1660 <= len(image) <= 64 * 1024 * 1024, 'Invalid coral boot image size'
@@ -29,4 +31,7 @@ if args.kernel:
 if args.dtb:
     dtb_offset = minimum - dtb_size
     assert image[dtb_offset:dtb_offset + dtb_size] == args.dtb.read_bytes(), 'Boot image DTBs differ from the verified checkpoint'
+if args.keymaster_version:
+    ramdisk_offset = page_size + align(kernel_size)
+    validate_runtime(image[ramdisk_offset:ramdisk_offset + ramdisk_size], args.keymaster_version)
 print(f'Structural checks passed: {len(image)} bytes; kernel, ramdisk and DTB present')

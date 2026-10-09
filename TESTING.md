@@ -28,5 +28,8 @@ Collect `adb pull /tmp/recovery.log`, `adb logcat -d > logcat.txt` and
 device-tree commit, ROM build and exact test result when reporting failures.
 
 Build artifacts are uploaded only after header-v2, image-size, kernel, ramdisk,
-DTB and truncation checks pass. These checks cannot establish runtime safety,
-bootability, correct ramdisk contents, or Android 17 compatibility.
+DTB and truncation checks pass. The decryption packaging check also requires
+startup of both Qualcomm Keymaster 4.0/default and Citadel 4.1/strongbox, and
+the 64-bit QTI Gatekeeper implementation under `/system/lib64/hw`.
+These checks cannot establish runtime safety, bootability, hardware-service
+registration or Android 17 compatibility.

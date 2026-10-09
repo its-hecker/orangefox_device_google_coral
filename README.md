@@ -15,3 +15,10 @@ The optional `kernel` and `recovery` stages use `kernel-checkpoint/` by default.
 The image artifact includes checksums, the source manifest and kernel provenance;
 the validator checks header v2, the 64 MiB partition limit, and exact checkpoint
 kernel and DTB contents. Device testing is described in [TESTING.md](TESTING.md).
+
+The first Infinity device test reached the OrangeFox splash but blocked waiting
+for Qualcomm Keymaster 4.0/default. Coral also has Citadel 4.1/strongbox;
+the fallback now uses `4.x` to start both services. The ramdisk includes the
+QTI Gatekeeper implementation that was missing in that test. CI checks these
+startup triggers and packaged libraries before uploading the image. Reaching
+the UI and decrypting Android 17 data still require a new device test.
