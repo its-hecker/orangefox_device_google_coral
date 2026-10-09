@@ -46,6 +46,12 @@ PY
 # A whole-tree repo sync here would attempt to overwrite that checkout.
 mapfile -t dependency_paths < <(python3 -c 'import json; print("\n".join(d["target_path"] for d in json.load(open("device/google/coral/twrp.dependencies"))))')
 repo sync -c -j4 --no-clone-bundle --no-tags "${dependency_paths[@]}" 2>&1 | tee "$port_root/logs/dependencies.log"
+# The theme keeps SVG handles square while Coral scales X and Y differently.
+# Patch the renderer before either stage records its source identity.
+slider_patch="$port_root/patches/0001-fit-slider-handles-to-scaled-images.patch"
+git -C bootable/recovery apply --check "$slider_patch"
+git -C bootable/recovery apply "$slider_patch"
+python3 "$port_root/scripts/test_slider_render.py" "$build_root/android/bootable/recovery/gui/slidervalue.cpp"
 if [[ "$build_stage" = recovery ]]; then
     python3 "$port_root/scripts/kernel_checkpoint.py" import "$build_root/android" "$port_root" "$checkpoint"
 fi

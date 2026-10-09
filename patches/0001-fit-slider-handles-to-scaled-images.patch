@@ -1,0 +1,36 @@
+--- a/gui/slidervalue.cpp
++++ b/gui/slidervalue.cpp
+@@ -232,6 +232,13 @@
+ 		mRenderH = h;
+ 	}
+ 
++	// Aspect-preserving images can scale differently from XML dimensions.
++	// A blit copies pixels without resizing, so use the actual handle size.
++	if (mHandleImage && mHandleImage->GetResource()) {
++		mSliderW = mHandleImage->GetWidth();
++		mSliderH = mHandleImage->GetHeight();
++	}
++
+ 	mRenderH = mSliderH;
+ 	if (mShowCurr)
+ 		mRenderH += mFontHeight;
+@@ -311,14 +318,17 @@
+ 	}
+ 
+ 	// slider
+-	uint32_t sliderX = mLineX + (mValuePct*(mLineW - mSliderW))/100;
++	int sliderX = mLineX + (mValuePct*(mLineW - mSliderW))/100;
+ 
+ 	if (mHandleImage && mHandleImage->GetResource())
+ 	{
+ 		gr_surface s = mHandleImage->GetResource();
+ 		if (mDragging && mHandleHoverImage && mHandleHoverImage->GetResource())
+ 			s = mHandleHoverImage->GetResource();
+-		gr_blit(s, 0, 0, mSliderW, mSliderH, sliderX, mLineY + (mLineH/2 - mSliderH/2));
++		const int handleW = gr_get_width(s);
++		const int handleH = gr_get_height(s);
++		const int handleX = sliderX + (mSliderW - handleW) / 2;
++		gr_blit(s, 0, 0, handleW, handleH, handleX, mLineY + (mLineH/2 - handleH/2));
+ 	}
+ 	else
+ 	{

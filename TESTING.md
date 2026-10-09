@@ -6,6 +6,13 @@ Infinity's current boot image, kernel, fstab and encryption configuration are
 required to assess Android 17 support. No automatic data format, encryption
 disable, AVB disable or permanent recovery installation is provided.
 
+The October 9 test of device-tree commit `a56060a` confirmed boot to Files,
+touch, ADB and MTP. It recorded three recovery-process SIGSEGVs: one after
+opening Screen settings and two after opening the console. Metadata decryption
+also failed; the Files page opening does not establish access to encrypted data.
+Retest Screen settings, the console, slider dragging and returning to Files
+with the slider fix, then collect the same three logs if a restart occurs.
+
 Only test on **coral** with an unlocked bootloader. Confirm the product with
 `fastboot getvar product`. Preserve the exact Infinity boot image and a data
 backup before testing. Coral uses recovery in boot, not a separate recovery
