@@ -1,9 +1,10 @@
 # OrangeFox for Google Pixel 4 XL (coral)
 
-Experimental port for Infinity Android 17. Device testing confirms the Files
-menu opens and touch, ADB and MTP work. UI stability, sideload and encrypted-data
-support remain unverified. A successful build is not confirmation of Android 17
-compatibility.
+Experimental port for Infinity Android 17. The tester reports reaching Files
+with touch, ADB and MTP working on a Pixel 4 (flame) using the Coral image.
+These results do not validate Coral. Boot and hardware operation on Coral,
+UI stability, sideload and encrypted-data support remain unverified. A
+successful build is not confirmation of Android 17 compatibility.
 
 Based on TeamWin/android_device_google_coral, android-12.1 commit b3f760ee3d17805e895c0d6e0387fd59d1f39120. Original copyright and licensing notices are preserved.
 
@@ -25,9 +26,13 @@ the fallback now uses `4.x` to start both services. The ramdisk includes the
 QTI Gatekeeper implementation that was missing in that test. CI checks these
 startup triggers and packaged libraries before uploading the image.
 
-The next device test reached the UI but crashed on Screen settings and the
-console. The [slider source patch](patches/README.md) fixes an image-buffer
-overread caused by Coral's differing horizontal and vertical theme scales.
-CI exercises the patched renderer against guarded buffers. That fix still
-needs a new device test. The latest logs also show `/data` metadata decryption
-failing with Keymaster error `-38`; encrypted storage support remains unresolved.
+The next test was subsequently reported as a Flame cross-device boot. The
+associated logs record crashes after opening Screen settings and the console,
+but identify the hardware as `coral` with a 1440x3040 framebuffer. Matching
+device identity and logs still need confirmation. The
+[slider source patch](patches/README.md) fixes an independently reproduced
+image-buffer overread at the logged theme scales. CI exercises the patched
+renderer against guarded buffers; its relationship to the device crashes
+still needs a new test on Coral. The supplied logs also show `/data` metadata
+decryption failing with Keymaster error `-38`; encrypted storage support remains
+unresolved.

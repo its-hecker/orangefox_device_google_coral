@@ -9,7 +9,11 @@ Coral's 1440x3040 screen scales the 1080x1920 theme by 4/3 horizontally and
 surface is 128x128. The XML slider dimensions independently become 128x152.
 The original renderer copies that larger rectangle without resizing, reading
 past the image buffer. The Screen settings page and console both contain
-these sliders, matching the three SIGSEGV/restart events in the device logs.
+these sliders, matching the pages opened before the three SIGSEGV/restart
+events in the supplied logs. This makes the overread a plausible cause, but
+those crashes have no backtrace confirming it. The tester subsequently
+identified the phone as Flame, while the logs report Coral and 1440x3040;
+the patch fixes the reproduced overread independently of that discrepancy.
 
 The patch uses the loaded handle's dimensions for slider layout and the
 selected normal/hover image's dimensions for each blit. Hover images remain
