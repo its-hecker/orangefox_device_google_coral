@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check Coral's packaged decryption services; this cannot test device hardware."""
+"""Check Coral's packaged startup services; this cannot test device hardware."""
 import gzip
 import pathlib
 import re
@@ -48,7 +48,8 @@ def runtime_errors(files, keymaster_version):
     }
     services, started, errors = {}, set(), []
     for name, data in files.items():
-        if not re.fullmatch(r'init\.recovery\..*\.rc', name):
+        if not (re.fullmatch(r'init\.recovery\..*\.rc', name) or
+                re.fullmatch(r'system/etc/init/[^/]+\.rc', name)):
             continue
         action_matches = False
         for line in data.decode().splitlines():
@@ -60,7 +61,9 @@ def runtime_errors(files, keymaster_version):
             elif line.startswith('on '):
                 clauses = line[3:].split(' && ')
                 conditions = [re.fullmatch(r'property:([^=]+)=(.*)', c) for c in clauses]
-                action_matches = all(
+                # Normal boot and the encrypted-startup properties above are
+                # considered; the fastbootd-only trigger must not satisfy this.
+                action_matches = line == 'on boot' or all(
                     c is not None and c[1] in properties and
                     (c[2] == '*' or properties[c[1]] == c[2]) for c in conditions
                 )
@@ -69,18 +72,21 @@ def runtime_errors(files, keymaster_version):
 
     for service in ('keymaster-4-0-qti', 'keymaster-4-1-citadel',
                     'gatekeeper-1-0-qti', 'qseecomd',
-                    'vendor.citadeld', 'vendor.weaver_hal'):
+                    'vendor.citadeld', 'vendor.weaver_hal', 'health-hal-2-1'):
         if service not in services:
             errors.append(f'Missing recovery service: {service}')
         elif not files.get(services[service]):
             errors.append(f'Missing recovery service binary: {services[service]}')
         if service not in started:
-            errors.append(f'Encrypted startup does not start {service} (Keymaster {keymaster_version})')
+            errors.append(f'Recovery startup does not start {service} (Keymaster {keymaster_version})')
 
     for library in ('hw/android.hardware.gatekeeper@1.0-impl-qti.so',
                     'android.hardware.gatekeeper@1.0.so',
                     'android.hardware.keymaster@4.0.so',
                     'android.hardware.keymaster@4.1-impl.nos.so',
+                    'android.hardware.health@2.0.so',
+                    'android.hardware.health@2.1.so',
+                    'hw/android.hardware.health@2.0-impl-2.1.so',
                     'libqtikeymaster4.so', 'libkeymasterdeviceutils.so',
                     'libqcbor.so', 'libQSEEComAPI.so', 'libhidlbase.so',
                     'libutils.so', 'liblog.so', 'libcutils.so',
@@ -101,6 +107,14 @@ def runtime_errors(files, keymaster_version):
             errors.append('Recovery manifest must declare both Coral Keymaster instances')
     except (KeyError, StopIteration, ET.ParseError):
         errors.append('Missing or invalid recovery Keymaster manifest')
+    try:
+        manifest = ET.fromstring(files['vendor/etc/vintf/manifest/android.hardware.health@2.1.xml'])
+        health = next(h for h in manifest.findall('hal')
+                      if h.findtext('name') == 'android.hardware.health')
+        if '@2.1::IHealth/default' not in {n.text for n in health.findall('fqname')}:
+            errors.append('Recovery manifest must declare Health 2.1/default')
+    except (KeyError, StopIteration, ET.ParseError):
+        errors.append('Missing or invalid recovery Health manifest')
     return errors
 
 
@@ -108,4 +122,4 @@ def validate_runtime(packed, keymaster_version):
     errors = runtime_errors(ramdisk_files(packed), keymaster_version)
     if errors:
         raise ValueError('\n'.join(errors))
-    print('Ramdisk checks passed: both Keymaster instances start; Gatekeeper implementation is packaged')
+    print('Ramdisk checks passed: Keymaster and Health startup configured; required implementations packaged')

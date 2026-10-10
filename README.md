@@ -1,9 +1,10 @@
 # OrangeFox for Google Pixel 4 XL (coral)
 
-Experimental port for Infinity Android 17. The tester reports reaching Files
-with touch, ADB and MTP working on a Pixel 4 (flame) using the Coral image.
-These results do not validate Coral. Boot and hardware operation on Coral,
-UI stability, sideload and encrypted-data support remain unverified. A
+Experimental port for Infinity Android 17. The latest tester report confirms
+a Pixel 4 XL (coral) and includes a photograph of the Files UI. Touch, ADB and
+MTP were reported working during bring-up. The latest Coral test reports
+encrypted storage remaining inaccessible with no password prompt. UI stability,
+battery reporting and ROM installation still need device validation. A
 successful build is not confirmation of Android 17 compatibility.
 
 Based on TeamWin/android_device_google_coral, android-12.1 commit b3f760ee3d17805e895c0d6e0387fd59d1f39120. Original copyright and licensing notices are preserved.
@@ -36,3 +37,9 @@ renderer against guarded buffers; its relationship to the device crashes
 still needs a new test on Coral. The supplied logs also show `/data` metadata
 decryption failing with Keymaster error `-38`; encrypted storage support remains
 unresolved.
+
+The latest Coral photograph shows an empty battery reading. The packaged
+Health 2.1 service was disabled and only started by the fastbootd trigger;
+normal recovery now starts it on boot. CI checks the startup trigger, service,
+implementation and manifest. Registration and correct readings still require
+a device test; the read-only checks are in [TESTING.md](TESTING.md).

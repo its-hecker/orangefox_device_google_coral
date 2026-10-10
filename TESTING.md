@@ -17,6 +17,16 @@ does not establish access to encrypted data. Retest on Coral with the slider
 fix, including Screen settings, the console, slider dragging and returning to
 Files, then collect the same three logs if a restart occurs.
 
+On October 10 the tester confirmed the latest test is on a Pixel 4 XL and
+provided a photograph of the Files UI. The status bar has a battery icon and
+percent sign but no value. The Health service is included but was only started
+when entering fastbootd. The next build starts `health-hal-2-1` on normal boot.
+The tester also reports that storage remains encrypted and OrangeFox does not
+ask for a password despite the installed OS having a screen lock. The supplied
+logs fail at metadata-key use before credential-protected file unlocking;
+the missing prompt is consistent with that failure. Decryption remains failed
+in this test and is separate from the Health service startup fix.
+
 Only test on **coral** with an unlocked bootloader. Confirm the product with
 `fastboot getvar product`. Preserve the exact Infinity boot image and a data
 backup before testing. Coral uses recovery in boot, not a separate recovery
@@ -39,9 +49,42 @@ Collect `adb pull /tmp/recovery.log`, `adb logcat -d > logcat.txt` and
 device-tree commit, ROM build, the product reported by `fastboot getvar product`,
 and exact test result when reporting failures.
 
+## Device checks in recovery
+
+1. Open Screen settings, move the brightness slider, return to Files, then open
+   and close the console several times. Leave recovery idle for five minutes
+   and note any restart or freeze.
+2. If a decrypt prompt appears, enter the device's PIN/password on the phone.
+   Browse `/sdcard/Download` or `/data/media/0/Download` and confirm existing,
+   recognizable filenames. Read one small existing file through MTP or with
+   `adb pull /sdcard/Download/NAME`. A `/data` directory, an empty folder or
+   storage capacity alone does not prove decryption. Do not format data.
+3. Check battery capacity and charging status, then connect/disconnect a
+   charger and compare the status bar after a few seconds:
+
+   ```sh
+   adb shell cat /sys/class/power_supply/battery/capacity
+   adb shell cat /sys/class/power_supply/battery/status
+   adb shell getprop init.svc.health-hal-2-1
+   ```
+
+   On the previous build, `adb shell start health-hal-2-1` starts the packaged
+   service for this boot. If the percentage appears, that confirms the missing
+   normal startup trigger. If it stays blank or the service restarts, collect
+   logs rather than changing the theme or battery values.
+4. Read the active mounts with `adb shell cat /proc/mounts`. Check that the
+   `/data` mount is present when testing storage; successful sysfs battery
+   reads do not depend on `/data` decryption.
+5. After a restart, blank battery reading or storage failure, collect the
+   three logs above and report the exact image/build tested. Once these checks
+   pass, USB OTG and ROM installation can be tested separately with compatible
+   packages.
+
 Build artifacts are uploaded only after header-v2, image-size, kernel, ramdisk,
 DTB and truncation checks pass. The decryption packaging check also requires
 startup of both Qualcomm Keymaster 4.0/default and Citadel 4.1/strongbox, and
 the 64-bit QTI Gatekeeper implementation under `/system/lib64/hw`.
+It also checks normal-boot startup of Health 2.1/default and its packaged
+binary, implementation and VINTF declaration.
 These checks cannot establish runtime safety, bootability, hardware-service
 registration or Android 17 compatibility.

@@ -11,6 +11,10 @@ on init
     # Enable thermal mitigation
     write /sys/devices/virtual/thermal/tz-by-name/backup-charge/mode enable
 
+on boot
+    # The UI battery monitor uses the Health HAL in normal recovery too.
+    start health-hal-2-1
+
 on property:ro.crypto.state=encrypted && property:ro.crypto.type=file
     start vendor.citadeld
     start vendor.weaver_hal
