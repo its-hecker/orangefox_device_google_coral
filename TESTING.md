@@ -1,9 +1,10 @@
 # Pixel 4 XL bring-up
 
-This is an experimental recovery. The tester reports working data decryption
-on a Pixel 4 XL with Infinity Android 17 after the version-metadata fix.
-UI stability, automatic battery startup and ROM installation still require
-separate validation. The 12.1 build platform alone does not establish support
+This is an experimental recovery. The latest tester report and logs confirm
+PIN/data decryption and automatic battery startup on a Pixel 4 XL with
+Infinity Android 17. Settings and brightness changes completed without a
+recorded recovery crash. Console stability, longer runs and ROM installation
+still require separate validation. The 12.1 build platform alone does not establish support
 for other ROM encryption configurations. No automatic data format, encryption
 disable, AVB disable or permanent recovery installation is provided.
 
@@ -42,8 +43,8 @@ Android 17, while recovery reports Android 12 and the placeholder patch date
 December 2127 patch level. `prepdecrypt` reports `SETPATCH=false`. The installed
 properties supplied afterwards confirm Android 17, system patch 2026-09-01
 and vendor patch 2022-10-05. Infinity's Coral source also sets the boot firmware
-patch to 2022-10-05. The version-metadata fix enables ROM property updates on init even
-for temporary boot, before QSEE/Keymaster start, and accepts both system image
+patch to 2022-10-05. The version-metadata fix enables ROM property updates on
+init even for temporary boot, before QSEE/Keymaster start, and accepts both system image
 property layouts. It replaces the future patch dates and encodes Android 17 /
 September 2026 in the legacy boot header, with the separate AVB boot firmware
 patch at 2022-10-05. No encryption key blobs are edited by this configuration
@@ -51,9 +52,30 @@ change.
 
 CI build `38071785744` completed successfully for fix commit `5e77df7`. Later
 on October 10, the tester reported that the decryption prompt appears and data
-decryption works on the Pixel 4 XL. This is the latest device result and
-supersedes the earlier failed-decryption report for this installation. It does
-not establish ROM ZIP installation or automatic Health startup.
+decryption works on the Pixel 4 XL, superseding the earlier failed-decryption
+report for this installation.
+
+The tester then confirmed that the battery percentage appears automatically
+and settings seem stable, and supplied `recovery(3).log`, `logcat(3).txt` and
+`dmesg(3).txt`. They provide the following evidence:
+
+- The logs record `prepdecrypt::SETPATCH=true`, Android release `17`, system
+  patch `2026-09-01` and vendor patch `2022-10-05`.
+- Metadata decryption succeeds with `/dev/block/dm-4`. The PIN page opens,
+  Weaver/synthetic-password unlocking succeeds, and the log records
+  `User 0 Decrypted Successfully` and `Data successfully decrypted`.
+  Internal storage switches to `/data/media/0`, and `/data` is mounted as f2fs.
+- The normal `on boot` action starts `health-hal-2-1`; Health 2.1/default
+  registers and reports 34% with subsequent charging-state updates.
+- One OrangeFox process startup is recorded. Settings, theme customization,
+  a theme reload and Screen brightness changes complete without a fatal
+  signal or recovery exit/restart in these logs. No kernel fault is recorded.
+
+This capture covers about three minutes. Loading console page definitions is
+not a console visit; the console was not opened in this capture. Wipe/Restore
+page visits do not establish wipe, restore or ROM installation success.
+Console testing, longer stability runs and compatible ROM ZIP installation
+remain separate checks.
 
 Only test on **coral** with an unlocked bootloader. Confirm the product with
 `fastboot getvar product`. Preserve the exact Infinity boot image and a data
@@ -69,8 +91,8 @@ modify data. Exit by rebooting without installing or formatting anything.
 Record boot/display/touch, USB ADB, MTP, battery reporting, read-only partition
 mounting, reboot targets and fastbootd separately. Data decryption is reported
 working on the tested Infinity installation; don't format data to work around
-a future decryption failure. Sideload
-installation and A/B OTA behavior require separate testing with the ROM's
+a future decryption failure. Sideload installation and A/B OTA behavior require
+separate testing with the ROM's
 supported packages after basic bring-up succeeds.
 
 Collect `adb pull /tmp/recovery.log`, `adb logcat -d > logcat.txt` and
