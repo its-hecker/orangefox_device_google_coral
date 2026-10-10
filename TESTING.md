@@ -95,14 +95,19 @@ and exact test result when reporting failures.
    pass, USB OTG and ROM installation can be tested separately with compatible
    packages.
 
-For the current metadata-decryption failure, the ROM's property files can be
-read from the already mounted system/vendor partitions without reading user
-files or key blobs:
+For the current metadata-decryption failure, use the ROM property copies saved
+by the OrangeFox startup script. It mounts system/vendor read-only while reading
+ROM information, caches the files under `/FFiles/temp`, and unmounts its
+temporary mounts. The original paths may therefore be unavailable afterwards.
+These copies do not require access to user files or key blobs:
 
 ```sh
-adb pull /system_root/system/build.prop system-build.prop
-adb pull /vendor/build.prop vendor-build.prop
+adb pull /FFiles/temp/system_build_prop system-build.prop
+adb pull /FFiles/temp/vendor_build_prop vendor-build.prop
 ```
+
+If a copy is absent, collect `adb shell ls -l /FFiles/temp` so its presence can
+be checked before attempting another path.
 
 Build artifacts are uploaded only after header-v2, image-size, kernel, ramdisk,
 DTB and truncation checks pass. The decryption packaging check also requires
