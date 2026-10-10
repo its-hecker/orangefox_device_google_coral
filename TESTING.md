@@ -27,6 +27,21 @@ logs fail at metadata-key use before credential-protected file unlocking;
 the missing prompt is consistent with that failure. Decryption remains failed
 in this test and is separate from the Health service startup fix.
 
+The same tester subsequently ran `adb shell start health-hal-2-1`, restoring a
+51% reading and charging indicator. Fresh logs show successful Health 2.1
+registration. They contain one recovery-process startup and no fatal recovery
+signal, including a visit to Screen settings; the console was not opened in
+this capture. This validates manual Health startup, not the new automatic
+startup trigger or complete UI stability.
+
+The fresh logs still fail metadata-key use with `KEY_REQUIRES_UPGRADE (-62)`
+followed by `INVALID_ARGUMENT (-38)` during upgrade. The ROM is detected as
+Android 17, while recovery reports Android 12 and the placeholder patch date
+2127-12-31. The tested image's boot header also contains Android 12 and a
+December 2127 patch level. `prepdecrypt` reports `SETPATCH=false`. The installed
+system/vendor property files are needed to investigate the mismatch; no
+version override or key-blob modification has been added for this failure.
+
 Only test on **coral** with an unlocked bootloader. Confirm the product with
 `fastboot getvar product`. Preserve the exact Infinity boot image and a data
 backup before testing. Coral uses recovery in boot, not a separate recovery
@@ -79,6 +94,15 @@ and exact test result when reporting failures.
    three logs above and report the exact image/build tested. Once these checks
    pass, USB OTG and ROM installation can be tested separately with compatible
    packages.
+
+For the current metadata-decryption failure, the ROM's property files can be
+read from the already mounted system/vendor partitions without reading user
+files or key blobs:
+
+```sh
+adb pull /system_root/system/build.prop system-build.prop
+adb pull /vendor/build.prop vendor-build.prop
+```
 
 Build artifacts are uploaded only after header-v2, image-size, kernel, ramdisk,
 DTB and truncation checks pass. The decryption packaging check also requires

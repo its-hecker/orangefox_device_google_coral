@@ -2,10 +2,11 @@
 
 Experimental port for Infinity Android 17. The latest tester report confirms
 a Pixel 4 XL (coral) and includes a photograph of the Files UI. Touch, ADB and
-MTP were reported working during bring-up. The latest Coral test reports
-encrypted storage remaining inaccessible with no password prompt. UI stability,
-battery reporting and ROM installation still need device validation. A
-successful build is not confirmation of Android 17 compatibility.
+MTP were reported working during bring-up. Manually starting the Health service
+restored the battery percentage and charging indicator. The latest Coral test
+reports encrypted storage remaining inaccessible with no password prompt. UI
+stability, automatic battery startup and ROM installation still need device
+validation. A successful build is not confirmation of Android 17 compatibility.
 
 Based on TeamWin/android_device_google_coral, android-12.1 commit b3f760ee3d17805e895c0d6e0387fd59d1f39120. Original copyright and licensing notices are preserved.
 
@@ -41,5 +42,7 @@ unresolved.
 The latest Coral photograph shows an empty battery reading. The packaged
 Health 2.1 service was disabled and only started by the fastbootd trigger;
 normal recovery now starts it on boot. CI checks the startup trigger, service,
-implementation and manifest. Registration and correct readings still require
-a device test; the read-only checks are in [TESTING.md](TESTING.md).
+implementation and manifest. The tester confirmed that manually starting the
+service restored a 51% reading and charging indicator, and the fresh logs show
+Health registration succeeding. Automatic startup still requires a test of
+the new image; the device checks are in [TESTING.md](TESTING.md).
