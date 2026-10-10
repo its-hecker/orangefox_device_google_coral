@@ -1,12 +1,12 @@
 # OrangeFox for Google Pixel 4 XL (coral)
 
-Experimental port for Infinity Android 17. The latest tester report confirms
-a Pixel 4 XL (coral) and includes a photograph of the Files UI. Touch, ADB and
-MTP were reported working during bring-up. Manually starting the Health service
-restored the battery percentage and charging indicator. The latest Coral test
-reports encrypted storage remaining inaccessible with no password prompt. UI
-stability, automatic battery startup and ROM installation still need device
-validation. A successful build is not confirmation of Android 17 compatibility.
+Experimental port for Infinity Android 17 on Pixel 4 XL (coral). The latest
+tester report confirms that the decryption prompt now appears and data
+decryption works after the version-metadata fix. Touch, ADB and MTP were
+reported working during bring-up. Manually starting the Health service restored
+the battery percentage and charging indicator. UI stability, automatic battery
+startup and ROM installation still need device validation. The decryption
+result applies to the tested Coral/Infinity installation.
 
 Based on TeamWin/android_device_google_coral, android-12.1 commit b3f760ee3d17805e895c0d6e0387fd59d1f39120. Original copyright and licensing notices are preserved.
 
@@ -36,11 +36,11 @@ device identity and logs still need confirmation. The
 [slider source patch](patches/README.md) fixes an independently reproduced
 image-buffer overread at the logged theme scales. CI exercises the patched
 renderer against guarded buffers; its relationship to the device crashes
-still needs a new test on Coral. The supplied logs also show `/data` metadata
-decryption failing with Keymaster error `-38`; encrypted storage support remains
-unresolved.
+still needs a new test on Coral. Those logs also show `/data` metadata decryption
+failing with Keymaster error `-38`; the later Coral test described below reports
+working decryption after the version-metadata fix.
 
-The latest Coral photograph shows an empty battery reading. The packaged
+The earlier Coral photograph shows an empty battery reading. The packaged
 Health 2.1 service was disabled and only started by the fastbootd trigger;
 normal recovery now starts it on boot. CI checks the startup trigger, service,
 implementation and manifest. The tester confirmed that manually starting the
@@ -51,11 +51,17 @@ the new image; the device checks are in [TESTING.md](TESTING.md).
 The supplied ROM properties identify Android 17, system patch 2026-09-01 and
 vendor patch 2022-10-05. The previous recovery supplied Android 12 and the
 placeholder date 2127-12-31 while `prepdecrypt` skipped ROM version updates
-during temporary fastboot boot. The next build enables those updates on init,
+during temporary fastboot boot. The updated build enables those updates on init,
 before QSEE/Keymaster startup, and supports both system build.prop layouts.
 Its legacy boot header targets Android 17 / September 2026; boot and vendor
 firmware metadata stay at 2022-10-05, matching
 [Infinity's Coral tree](https://github.com/its-hecker/infinity_cnb_android_device_google_coral/blob/b8eb4b5868bd5e3412bb0287361bf2fa63ad8bab/device-common.mk).
 These values align Keymaster metadata with this ROM, not the security fixes
 in recovery's Android 12.1 binaries. CI verifies the startup script with host
-property/mount substitutes; successful hardware decryption is still unverified.
+property/mount substitutes.
+
+[Build 38071785744](https://github.com/its-hecker/orangefox_device_google_coral/actions/runs/38071785744)
+completed successfully for the version-metadata fix at `5e77df7`. On October 10,
+the tester subsequently reported that OrangeFox asks for decryption and data
+decryption works on the Pixel 4 XL. This records a successful device report for
+the tested installation; ROM ZIP installation is still untested.

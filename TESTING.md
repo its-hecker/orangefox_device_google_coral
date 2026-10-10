@@ -1,9 +1,10 @@
 # Pixel 4 XL bring-up
 
-This is an experimental recovery, not an Android 17 validated release. The
-12.1 build platform does not establish which ROM encryption schemes it supports.
-Infinity's current boot image, kernel, fstab and encryption configuration are
-required to assess Android 17 support. No automatic data format, encryption
+This is an experimental recovery. The tester reports working data decryption
+on a Pixel 4 XL with Infinity Android 17 after the version-metadata fix.
+UI stability, automatic battery startup and ROM installation still require
+separate validation. The 12.1 build platform alone does not establish support
+for other ROM encryption configurations. No automatic data format, encryption
 disable, AVB disable or permanent recovery installation is provided.
 
 The October 9 test of device-tree commit `a56060a` was subsequently reported
@@ -34,20 +35,25 @@ signal, including a visit to Screen settings; the console was not opened in
 this capture. This validates manual Health startup, not the new automatic
 startup trigger or complete UI stability.
 
-The fresh logs still fail metadata-key use with `KEY_REQUIRES_UPGRADE (-62)`
+Those pre-fix logs fail metadata-key use with `KEY_REQUIRES_UPGRADE (-62)`
 followed by `INVALID_ARGUMENT (-38)` during upgrade. The ROM is detected as
 Android 17, while recovery reports Android 12 and the placeholder patch date
 2127-12-31. The tested image's boot header also contains Android 12 and a
 December 2127 patch level. `prepdecrypt` reports `SETPATCH=false`. The installed
 properties supplied afterwards confirm Android 17, system patch 2026-09-01
 and vendor patch 2022-10-05. Infinity's Coral source also sets the boot firmware
-patch to 2022-10-05. The next image enables ROM property updates on init even
+patch to 2022-10-05. The version-metadata fix enables ROM property updates on init even
 for temporary boot, before QSEE/Keymaster start, and accepts both system image
 property layouts. It replaces the future patch dates and encodes Android 17 /
 September 2026 in the legacy boot header, with the separate AVB boot firmware
 patch at 2022-10-05. No encryption key blobs are edited by this configuration
-change. A device retest is required to determine whether this resolves the
-metadata-key failure or exposes another Android 17 compatibility issue.
+change.
+
+CI build `38071785744` completed successfully for fix commit `5e77df7`. Later
+on October 10, the tester reported that the decryption prompt appears and data
+decryption works on the Pixel 4 XL. This is the latest device result and
+supersedes the earlier failed-decryption report for this installation. It does
+not establish ROM ZIP installation or automatic Health startup.
 
 Only test on **coral** with an unlocked bootloader. Confirm the product with
 `fastboot getvar product`. Preserve the exact Infinity boot image and a data
@@ -61,8 +67,9 @@ boot avoids replacing the ROM boot image, but recovery operations can still
 modify data. Exit by rebooting without installing or formatting anything.
 
 Record boot/display/touch, USB ADB, MTP, battery reporting, read-only partition
-mounting, reboot targets and fastbootd separately. Encrypted-data support is
-unverified; don't format data to work around a decryption failure. Sideload
+mounting, reboot targets and fastbootd separately. Data decryption is reported
+working on the tested Infinity installation; don't format data to work around
+a future decryption failure. Sideload
 installation and A/B OTA behavior require separate testing with the ROM's
 supported packages after basic bring-up succeeds.
 
@@ -115,7 +122,7 @@ and exact test result when reporting failures.
    pass, USB OTG and ROM installation can be tested separately with compatible
    packages.
 
-For the current metadata-decryption failure, use the ROM property copies saved
+For diagnosing a metadata-decryption failure, use the ROM property copies saved
 by the OrangeFox startup script. It mounts system/vendor read-only while reading
 ROM information, caches the files under `/FFiles/temp`, and unmounts its
 temporary mounts. The original paths may therefore be unavailable afterwards.
