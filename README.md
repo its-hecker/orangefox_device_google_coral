@@ -3,6 +3,8 @@
 Maintainer: **Hecker** ([its-hecker](https://github.com/its-hecker)).
 Support: [Pixel 4 Series](https://t.me/pixel4seriesofficial).
 
+[Download the tested release](https://github.com/its-hecker/orangefox_device_google_coral/releases/tag/R12.0-coral-unofficial-20261010).
+
 Experimental port for Infinity Android 17 on Pixel 4 XL (coral). The latest
 tester report and logs confirm PIN/data decryption and automatic battery
 startup after the fixes. Touch, ADB and MTP were reported working during

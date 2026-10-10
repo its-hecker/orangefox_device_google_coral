@@ -2,6 +2,7 @@ name: Experimental coral OrangeFox
 on:
   push:
     branches: [main]
+    paths-ignore: [release/**, .github/workflows/release.yml, README.md, TESTING.md]
   workflow_dispatch:
 permissions:
   contents: read

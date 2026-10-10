@@ -1,0 +1,78 @@
+name: Publish tested Coral release
+on:
+  push:
+    branches: [main]
+    paths: [release/latest.json]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: coral-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify successful pinned build
+        id: pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          p=json.load(open('release/latest.json'))
+          assert isinstance(p['run_id'],int) and p['run_id']>0
+          assert isinstance(p['artifact_id'],int) and p['artifact_id']>0
+          assert re.fullmatch(r'[0-9a-f]{40}',p['commit'])
+          assert re.fullmatch(r'[0-9a-f]{64}',p['image_sha256'])
+          assert re.fullmatch(r'[A-Za-z0-9._-]+',p['tag'])
+          def api(path):
+              return json.loads(subprocess.check_output(['gh','api',f'repos/{os.environ["GH_REPO"]}/{path}']))
+          r=api(f'actions/runs/{p["run_id"]}')
+          assert r['status']=='completed' and r['conclusion']=='success'
+          assert r['head_sha']==p['commit']
+          a=api(f'actions/artifacts/{p["artifact_id"]}')
+          assert not a['expired'] and a['name']==p['artifact_name']
+          assert a['workflow_run']['id']==p['run_id'] and a['workflow_run']['head_sha']==p['commit']
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              for k in ('run_id','artifact_id'): f.write(f'{k}={p[k]}\n')
+          PY
+      - uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ steps.pin.outputs.artifact_id }}
+          run-id: ${{ steps.pin.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: release-artifact
+          merge-multiple: true
+      - name: Verify and publish tested assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, pathlib, subprocess
+          p=json.load(open('release/latest.json'))
+          d=pathlib.Path('release-artifact')
+          names=['OrangeFox-unofficial-coral.img','SHA256SUMS','device-tree-commit.txt','kernel-metadata.json','source-manifest.xml']
+          assert set(x.name for x in d.iterdir())==set(names)
+          image=d/names[0]
+          assert image.stat().st_size==67108864
+          assert hashlib.sha256(image.read_bytes()).hexdigest()==p['image_sha256']
+          assert (d/'device-tree-commit.txt').read_text().strip()==p['commit']
+          assert (d/'SHA256SUMS').read_text().strip()==p['image_sha256']+'  '+names[0]
+          subprocess.run(['sha256sum','-c','SHA256SUMS'],cwd=d,check=True)
+          existing=subprocess.run(['gh','release','view',p['tag'],'--json','isDraft,targetCommitish'],capture_output=True,text=True)
+          if existing.returncode==0:
+              release=json.loads(existing.stdout)
+              assert release['isDraft'], 'Refusing to modify an already published release'
+              assert release['targetCommitish']==p['commit']
+          else:
+              subprocess.run(['gh','release','create',p['tag'],'--target',p['commit'],'--title','OrangeFox R12.0 Unofficial — Pixel 4 XL (coral) — 2026-10-10','--notes-file','release/notes-2026-10-10.md','--draft','--prerelease'],check=True)
+          subprocess.run(['gh','release','upload',p['tag'],*[str(d/n) for n in names],'--clobber'],check=True)
+          subprocess.run(['gh','release','edit',p['tag'],'--draft=false'],check=True)
+          PY
