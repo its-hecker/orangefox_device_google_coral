@@ -32,6 +32,7 @@ jobs:
           assert re.fullmatch(r'[0-9a-f]{40}',p['commit'])
           assert re.fullmatch(r'[0-9a-f]{64}',p['image_sha256'])
           assert re.fullmatch(r'[A-Za-z0-9._-]+',p['tag'])
+          assert isinstance(p.get('prerelease',True),bool)
           def api(path):
               return json.loads(subprocess.check_output(['gh','api',f'repos/{os.environ["GH_REPO"]}/{path}']))
           r=api(f'actions/runs/{p["run_id"]}')
@@ -66,13 +67,26 @@ jobs:
           assert (d/'device-tree-commit.txt').read_text().strip()==p['commit']
           assert (d/'SHA256SUMS').read_text().strip()==p['image_sha256']+'  '+names[0]
           subprocess.run(['sha256sum','-c','SHA256SUMS'],cwd=d,check=True)
-          existing=subprocess.run(['gh','release','view',p['tag'],'--json','isDraft,targetCommitish'],capture_output=True,text=True)
+          endpoint=f'repos/{os.environ["GH_REPO"]}/releases/tags/{p["tag"]}'
+          existing=subprocess.run(['gh','api',endpoint],capture_output=True,text=True)
+          flags=['--prerelease='+str(p.get('prerelease',True)).lower()]
+          if not p.get('prerelease',True): flags.append('--latest')
           if existing.returncode==0:
               release=json.loads(existing.stdout)
-              assert release['isDraft'], 'Refusing to modify an already published release'
-              assert release['targetCommitish']==os.environ['GITHUB_SHA']
+              if not release['draft']:
+                  # A published release can only change its release status here.
+                  # Require every uploaded asset to match the pinned artifact first.
+                  assets={a['name']:a for a in release['assets']}
+                  assert set(assets)==set(names)
+                  for n in names:
+                      a=assets[n]
+                      assert a['state']=='uploaded' and a['size']==(d/n).stat().st_size
+                      assert a['digest']=='sha256:'+hashlib.sha256((d/n).read_bytes()).hexdigest()
+                  subprocess.run(['gh','release','edit',p['tag'],*flags],check=True)
+                  raise SystemExit(0)
+              assert release['target_commitish']==os.environ['GITHUB_SHA']
           else:
-              subprocess.run(['gh','release','create',p['tag'],'--target',os.environ['GITHUB_SHA'],'--title','OrangeFox R12.0 Unofficial — Pixel 4 XL (coral) — 2026-10-10','--notes-file','release/notes-2026-10-10.md','--draft','--prerelease'],check=True)
+              subprocess.run(['gh','release','create',p['tag'],'--target',os.environ['GITHUB_SHA'],'--title','OrangeFox R12.0 Unofficial — Pixel 4 XL (coral) — 2026-10-10','--notes-file','release/notes-2026-10-10.md','--draft',*flags],check=True)
           subprocess.run(['gh','release','upload',p['tag'],*[str(d/n) for n in names],'--clobber'],check=True)
-          subprocess.run(['gh','release','edit',p['tag'],'--draft=false'],check=True)
+          subprocess.run(['gh','release','edit',p['tag'],'--draft=false',*flags],check=True)
           PY
