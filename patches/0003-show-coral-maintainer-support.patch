@@ -1,0 +1,11 @@
+--- a/gui/theme/portrait_hdpi/pages/settings.xml
++++ b/gui/theme/portrait_hdpi/pages/settings.xml
+@@ -1152,7 +1152,7 @@
+ 				<condition var1="of_maintainer" op="!=" var2="2"/>
+ 				<condition var1="of_maintainer" op="!=" var2="1"/>
+ 				<placement x="%card_txt_x%" y="%cardtxt_7%"/>
+-				<text>{@abt_maintainer}</text>
++				<text>Support: t.me/pixel4seriesofficial</text>
+ 			</text>
+ 			<!-- Card -->
+ 			

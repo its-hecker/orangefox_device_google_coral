@@ -1,3 +1,4 @@
+OF_MAINTAINER := Hecker
 BOARD_USES_QCOM_FBE_DECRYPTION := true
 DISABLE_ARTIFACT_PATH_REQUIREMENTS := true
 # Match the tested Infinity Android 17 system's Keymaster version metadata.

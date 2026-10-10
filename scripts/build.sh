@@ -48,6 +48,12 @@ mapfile -t dependency_paths < <(python3 -c 'import json; print("\n".join(d["targ
 repo sync -c -j4 --no-clone-bundle --no-tags "${dependency_paths[@]}" 2>&1 | tee "$port_root/logs/dependencies.log"
 # The theme keeps SVG handles square while Coral scales X and Y differently.
 # Patch the renderer before either stage records its source identity.
+support_patch="$port_root/patches/0003-show-coral-maintainer-support.patch"
+if git -C bootable/recovery apply --check "$support_patch"; then
+    git -C bootable/recovery apply "$support_patch"
+else
+    git -C bootable/recovery apply --reverse --check "$support_patch"
+fi
 slider_patch="$port_root/patches/0001-fit-slider-handles-to-scaled-images.patch"
 git -C bootable/recovery apply --check "$slider_patch"
 git -C bootable/recovery apply "$slider_patch"

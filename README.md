@@ -1,5 +1,8 @@
 # OrangeFox for Google Pixel 4 XL (coral)
 
+Maintainer: **Hecker** ([its-hecker](https://github.com/its-hecker)).
+Support: [Pixel 4 Series](https://t.me/pixel4seriesofficial).
+
 Experimental port for Infinity Android 17 on Pixel 4 XL (coral). The latest
 tester report and logs confirm PIN/data decryption and automatic battery
 startup after the fixes. Touch, ADB and MTP were reported working during
