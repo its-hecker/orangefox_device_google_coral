@@ -46,19 +46,22 @@ def runtime_errors(files, keymaster_version):
         'vendor.sys.listeners.registered': 'true',
         'keymaster_ver': keymaster_version,
     }
-    services, started, errors = {}, set(), []
+    services, started, errors, init_properties = {}, set(), [], {}
     for name, data in files.items():
         if not (re.fullmatch(r'init\.recovery\..*\.rc', name) or
                 re.fullmatch(r'system/etc/init/[^/]+\.rc', name)):
             continue
         action_matches = False
+        init_action = False
         for line in data.decode().splitlines():
             line = line.split('#', 1)[0].strip()
             if line.startswith('service '):
                 fields = line.split()
                 services[fields[1]] = fields[2].lstrip('/')
                 action_matches = False
+                init_action = False
             elif line.startswith('on '):
+                init_action = line == 'on init'
                 clauses = line[3:].split(' && ')
                 conditions = [re.fullmatch(r'property:([^=]+)=(.*)', c) for c in clauses]
                 # Normal boot and the encrypted-startup properties above are
@@ -69,8 +72,11 @@ def runtime_errors(files, keymaster_version):
                 )
             elif action_matches and line.startswith('start '):
                 started.add(line.split()[1])
+            elif init_action and line.startswith('setprop '):
+                _, prop, value = line.split(maxsplit=2)
+                init_properties[prop] = value
 
-    for service in ('keymaster-4-0-qti', 'keymaster-4-1-citadel',
+    for service in ('prepdecrypt', 'keymaster-4-0-qti', 'keymaster-4-1-citadel',
                     'gatekeeper-1-0-qti', 'qseecomd',
                     'vendor.citadeld', 'vendor.weaver_hal', 'health-hal-2-1'):
         if service not in services:
@@ -96,6 +102,10 @@ def runtime_errors(files, keymaster_version):
             errors.append(f'Missing 64-bit recovery library: {path}')
 
     device_init = files.get('init.recovery.coral.rc', b'').decode()
+    if init_properties.get('prepdecrypt.setpatch') != 'true':
+        errors.append('Coral must enable installed ROM version properties on init, before Keymaster startup')
+    if not files.get('system/bin/resetprop'):
+        errors.append('Missing resetprop for installed ROM version properties')
     if 'import /init.recovery.qcom_decrypt.rc' not in device_init:
         errors.append('Coral init does not import the decryption services')
     try:

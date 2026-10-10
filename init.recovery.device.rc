@@ -6,6 +6,9 @@ on fs
 
 on init
     setprop sys.usb.configfs 1
+    # Temporary fastboot boots otherwise skip the installed ROM's version
+    # properties. Read them before crypto.ready starts QSEE and Keymaster.
+    setprop prepdecrypt.setpatch true
     # Don't lose recovery logs- keep warm reset for coming out of recovery.
     write /sys/module/msm_poweroff/parameters/warm_reset 1
     # Enable thermal mitigation

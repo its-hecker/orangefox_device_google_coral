@@ -39,8 +39,15 @@ followed by `INVALID_ARGUMENT (-38)` during upgrade. The ROM is detected as
 Android 17, while recovery reports Android 12 and the placeholder patch date
 2127-12-31. The tested image's boot header also contains Android 12 and a
 December 2127 patch level. `prepdecrypt` reports `SETPATCH=false`. The installed
-system/vendor property files are needed to investigate the mismatch; no
-version override or key-blob modification has been added for this failure.
+properties supplied afterwards confirm Android 17, system patch 2026-09-01
+and vendor patch 2022-10-05. Infinity's Coral source also sets the boot firmware
+patch to 2022-10-05. The next image enables ROM property updates on init even
+for temporary boot, before QSEE/Keymaster start, and accepts both system image
+property layouts. It replaces the future patch dates and encodes Android 17 /
+September 2026 in the legacy boot header, with the separate AVB boot firmware
+patch at 2022-10-05. No encryption key blobs are edited by this configuration
+change. A device retest is required to determine whether this resolves the
+metadata-key failure or exposes another Android 17 compatibility issue.
 
 Only test on **coral** with an unlocked bootloader. Confirm the product with
 `fastboot getvar product`. Preserve the exact Infinity boot image and a data
@@ -90,6 +97,19 @@ and exact test result when reporting failures.
 4. Read the active mounts with `adb shell cat /proc/mounts`. Check that the
    `/data` mount is present when testing storage; successful sysfs battery
    reads do not depend on `/data` decryption.
+   After booting the version-metadata fix, record:
+
+   ```sh
+   adb shell getprop prepdecrypt.setpatch
+   adb shell getprop ro.build.version.release
+   adb shell getprop ro.build.version.security_patch
+   adb shell getprop ro.vendor.build.security_patch
+   ```
+
+   Expected values for the supplied Infinity build are `true`, `17`,
+   `2026-09-01`, and `2022-10-05`. Recovery's build SDK remains 32; it is not
+   changed to the ROM's SDK 37. These property checks alone do not prove data
+   decryption; confirm the PIN prompt and existing files as described above.
 5. After a restart, blank battery reading or storage failure, collect the
    three logs above and report the exact image/build tested. Once these checks
    pass, USB OTG and ROM installation can be tested separately with compatible
@@ -115,5 +135,10 @@ startup of both Qualcomm Keymaster 4.0/default and Citadel 4.1/strongbox, and
 the 64-bit QTI Gatekeeper implementation under `/system/lib64/hw`.
 It also checks normal-boot startup of Health 2.1/default and its packaged
 binary, implementation and VINTF declaration.
+It requires `prepdecrypt.setpatch=true` on init, the property-updating script
+and resetprop, and checks the boot header OS/system patch and AVB boot firmware
+patch against the build settings. Host tests exercise the actual prepdecrypt
+script with fake mounts/properties in both system layouts and the temporary
+fastboot path, including a missing-property-file failure.
 These checks cannot establish runtime safety, bootability, hardware-service
 registration or Android 17 compatibility.

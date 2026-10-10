@@ -1,0 +1,27 @@
+diff --git a/crypto/system/bin/prepdecrypt.sh b/crypto/system/bin/prepdecrypt.sh
+index 93bfa57..65c8e00 100644
+--- a/crypto/system/bin/prepdecrypt.sh
++++ b/crypto/system/bin/prepdecrypt.sh
+@@ -382,6 +382,13 @@ if [ "$sdkver" -ge 26 ]; then
+ 
+ 		temp_mount "$TEMPSYS" "system" "$syspath"
+ 
++		# Newer system images can put build.prop at the filesystem root,
++		# even when recovery's build SDK selects the legacy SAR layout.
++		if [ ! -f "$TEMPSYS/$BUILDPROP" ] && [ -f "$TEMPSYS/build.prop" ]; then
++			BUILDPROP="build.prop"
++			log_print 2 "Using system image root build.prop."
++		fi
++
+ 		if [ -f "$TEMPSYS/$BUILDPROP" ]; then
+ 			log_print 2 "Build.prop exists! Reading system properties from build.prop..."
+ 			sdkver=$(grep -i -m 1 'ro.build.version.sdk=' "$TEMPSYS/$BUILDPROP"  | cut -f2 -d'=' -s)
+@@ -441,6 +448,8 @@ if [ "$sdkver" -ge 26 ]; then
+ 				finish
+ 			fi
+ 		fi
++		log_print 0 "No system build.prop found in either supported layout."
++		finish_error
+ 	fi
+ else
+ 	log_print 2 "Build tree is Nougat or older. Skip setting props."

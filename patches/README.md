@@ -1,4 +1,4 @@
-# Recovery source patch
+# Recovery source patches
 
 `0001-fit-slider-handles-to-scaled-images.patch` applies to
 `gui/slidervalue.cpp` in OrangeFox Recovery `fox_12.1`, tested at
@@ -27,3 +27,17 @@ uniform scaling, a wide screen, a larger hover image, a negative destination
 coordinate, and an image-free slider. The unpatched Coral case reproduces
 SIGSEGV; the patched cases pass. This test does not replace Android/device
 testing.
+
+`0002-read-system-properties-from-both-layouts.patch` applies to
+`crypto/system/bin/prepdecrypt.sh` in TeamWin/android_device_qcom_twrp-common,
+tested at `98506f7919102378c8d52ee7d6a94a867f1b4c55`. The Android 12.1 build
+SDK selects `system/build.prop`, but newer system filesystems can put
+`build.prop` at their root. The patch accepts either path after the temporary
+read-only mount. If neither exists it uses the script's existing error cleanup
+and signals `crypto.ready`, allowing startup to complete with a logged error.
+
+Coral init separately enables the upstream `prepdecrypt.setpatch` override
+before decryption services start, including temporary fastboot boots. The host
+test runs the actual script with isolated property and mount substitutes,
+verifies the OS/system/vendor values before `crypto.ready`, and verifies
+cleanup. It does not exercise Keymaster, metadata keys or PIN decryption.

@@ -23,11 +23,10 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/updatable_apex.mk)
 include build/make/target/product/iorap_large_memory_config.mk
 include device/google/coral/device.mk
 
-# Set Vendor SPL to match platform
-VENDOR_SECURITY_PATCH = $(PLATFORM_SECURITY_PATCH)
-
-# Set boot SPL
-BOOT_SECURITY_PATCH = $(PLATFORM_SECURITY_PATCH)
+# Firmware metadata must remain independent of the installed system patch.
+# Matches Infinity's coral device tree and the supplied vendor build.prop.
+VENDOR_SECURITY_PATCH := 2022-10-05
+BOOT_SECURITY_PATCH := 2022-10-05
 
 PRODUCT_PROPERTY_OVERRIDES += vendor.audio.adm.buffering.ms=3
 PRODUCT_PROPERTY_OVERRIDES += vendor.audio_hal.period_multiplier=2

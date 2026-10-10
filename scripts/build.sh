@@ -52,6 +52,11 @@ slider_patch="$port_root/patches/0001-fit-slider-handles-to-scaled-images.patch"
 git -C bootable/recovery apply --check "$slider_patch"
 git -C bootable/recovery apply "$slider_patch"
 python3 "$port_root/scripts/test_slider_render.py" "$build_root/android/bootable/recovery/gui/slidervalue.cpp"
+# Support both modern system-image and legacy system-as-root property paths.
+prepdecrypt_patch="$port_root/patches/0002-read-system-properties-from-both-layouts.patch"
+git -C device/qcom/twrp-common apply --check "$prepdecrypt_patch"
+git -C device/qcom/twrp-common apply "$prepdecrypt_patch"
+python3 "$port_root/scripts/test_prepdecrypt.py" "$build_root/android/device/qcom/twrp-common/crypto/system/bin/prepdecrypt.sh"
 if [[ "$build_stage" = recovery ]]; then
     python3 "$port_root/scripts/kernel_checkpoint.py" import "$build_root/android" "$port_root" "$checkpoint"
 fi
@@ -94,6 +99,12 @@ monitor_pid=$!
 trap 'kill "$monitor_pid" 2>/dev/null || true' EXIT
 echo "Building stage $build_stage with $build_jobs jobs; host CPUs: $(nproc)"
 lunch twrp_coral-eng
+boot_os_version=$(get_build_var CORAL_RECOVERY_OS_VERSION)
+boot_os_patch=$(get_build_var PLATFORM_SECURITY_PATCH)
+boot_firmware_patch=$(get_build_var BOOT_SECURITY_PATCH)
+[[ -n "$boot_os_version" && -n "$boot_os_patch" && -n "$boot_firmware_patch" ]]
+version_checks=(--os-version "$boot_os_version" --os-patch-level "$boot_os_patch"
+    --avb-tool "$build_root/android/external/avb/avbtool.py" --boot-security-patch "$boot_firmware_patch")
 if [[ "$build_stage" = kernel ]]; then
     # Run separately so the two nested kernel make processes do not compete.
     mka kernel -j"$build_jobs" 2>&1 | tee "$port_root/logs/kernel.log"
@@ -106,10 +117,10 @@ out=out/target/product/coral
 image="$out/boot.img"
 test -s "$image"
 if [[ "$build_stage" = recovery ]]; then
-    python3 "$port_root/scripts/validate_image.py" "$image" --kernel "$checkpoint/Image.lz4" --dtb "$checkpoint/dtb.img" --keymaster-version "$OF_DEFAULT_KEYMASTER_VERSION"
+    python3 "$port_root/scripts/validate_image.py" "$image" --kernel "$checkpoint/Image.lz4" --dtb "$checkpoint/dtb.img" --keymaster-version "$OF_DEFAULT_KEYMASTER_VERSION" "${version_checks[@]}"
     cp "$checkpoint/metadata.json" "$port_root/artifacts/kernel-metadata.json"
 else
-    python3 "$port_root/scripts/validate_image.py" "$image" --keymaster-version "$OF_DEFAULT_KEYMASTER_VERSION"
+    python3 "$port_root/scripts/validate_image.py" "$image" --keymaster-version "$OF_DEFAULT_KEYMASTER_VERSION" "${version_checks[@]}"
 fi
 cp "$image" "$port_root/artifacts/OrangeFox-unofficial-coral.img"
 repo manifest -r -o "$port_root/artifacts/source-manifest.xml"

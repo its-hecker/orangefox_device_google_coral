@@ -20,7 +20,8 @@ For a local source build, run `bash scripts/build.sh /absolute/build/directory`.
 The optional `kernel` and `recovery` stages use `kernel-checkpoint/` by default.
 The image artifact includes checksums, the source manifest and kernel provenance;
 the validator checks header v2, the 64 MiB partition limit, and exact checkpoint
-kernel and DTB contents. Device testing is described in [TESTING.md](TESTING.md).
+kernel and DTB contents, plus the boot header's OS/system-patch values and
+the separate boot AVB firmware patch. Device testing is described in [TESTING.md](TESTING.md).
 
 The first Infinity device test reached the OrangeFox splash but blocked waiting
 for Qualcomm Keymaster 4.0/default. Coral also has Citadel 4.1/strongbox;
@@ -46,3 +47,15 @@ implementation and manifest. The tester confirmed that manually starting the
 service restored a 51% reading and charging indicator, and the fresh logs show
 Health registration succeeding. Automatic startup still requires a test of
 the new image; the device checks are in [TESTING.md](TESTING.md).
+
+The supplied ROM properties identify Android 17, system patch 2026-09-01 and
+vendor patch 2022-10-05. The previous recovery supplied Android 12 and the
+placeholder date 2127-12-31 while `prepdecrypt` skipped ROM version updates
+during temporary fastboot boot. The next build enables those updates on init,
+before QSEE/Keymaster startup, and supports both system build.prop layouts.
+Its legacy boot header targets Android 17 / September 2026; boot and vendor
+firmware metadata stay at 2022-10-05, matching
+[Infinity's Coral tree](https://github.com/its-hecker/infinity_cnb_android_device_google_coral/blob/b8eb4b5868bd5e3412bb0287361bf2fa63ad8bab/device-common.mk).
+These values align Keymaster metadata with this ROM, not the security fixes
+in recovery's Android 12.1 binaries. CI verifies the startup script with host
+property/mount substitutes; successful hardware decryption is still unverified.
