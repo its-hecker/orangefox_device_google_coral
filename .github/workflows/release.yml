@@ -55,7 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import hashlib, json, pathlib, subprocess
+          import hashlib, json, os, pathlib, subprocess
           p=json.load(open('release/latest.json'))
           d=pathlib.Path('release-artifact')
           names=['OrangeFox-unofficial-coral.img','SHA256SUMS','device-tree-commit.txt','kernel-metadata.json','source-manifest.xml']
@@ -70,9 +70,9 @@ jobs:
           if existing.returncode==0:
               release=json.loads(existing.stdout)
               assert release['isDraft'], 'Refusing to modify an already published release'
-              assert release['targetCommitish']==p['commit']
+              assert release['targetCommitish']==os.environ['GITHUB_SHA']
           else:
-              subprocess.run(['gh','release','create',p['tag'],'--target',p['commit'],'--title','OrangeFox R12.0 Unofficial — Pixel 4 XL (coral) — 2026-10-10','--notes-file','release/notes-2026-10-10.md','--draft','--prerelease'],check=True)
+              subprocess.run(['gh','release','create',p['tag'],'--target',os.environ['GITHUB_SHA'],'--title','OrangeFox R12.0 Unofficial — Pixel 4 XL (coral) — 2026-10-10','--notes-file','release/notes-2026-10-10.md','--draft','--prerelease'],check=True)
           subprocess.run(['gh','release','upload',p['tag'],*[str(d/n) for n in names],'--clobber'],check=True)
           subprocess.run(['gh','release','edit',p['tag'],'--draft=false'],check=True)
           PY
