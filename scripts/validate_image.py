@@ -5,7 +5,7 @@ import pathlib
 import struct
 import subprocess
 import sys
-from validate_recovery_runtime import validate_runtime
+from validate_recovery_runtime import validate_runtime, validate_branding
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('image', type=pathlib.Path)
 parser.add_argument('--kernel', type=pathlib.Path)
@@ -15,6 +15,8 @@ parser.add_argument('--os-version', help='Expected Keymaster OS version in the b
 parser.add_argument('--os-patch-level', help='Expected system patch month in the boot header (YYYY-MM-DD)')
 parser.add_argument('--avb-tool', type=pathlib.Path, help='Build-tree avbtool.py for inspecting boot AVB metadata')
 parser.add_argument('--boot-security-patch', help='Expected boot firmware patch in the AVB property descriptor')
+parser.add_argument('--maintainer', help='Expected compiled OrangeFox maintainer name')
+parser.add_argument('--support-url', help='Expected support URL on the packaged About page')
 args = parser.parse_args()
 image = args.image.read_bytes()
 assert 1660 <= len(image) <= 64 * 1024 * 1024, 'Invalid coral boot image size'
@@ -57,4 +59,7 @@ if args.dtb:
 if args.keymaster_version:
     ramdisk_offset = page_size + align(kernel_size)
     validate_runtime(image[ramdisk_offset:ramdisk_offset + ramdisk_size], args.keymaster_version)
+if args.maintainer or args.support_url:
+    ramdisk_offset = page_size + align(kernel_size)
+    validate_branding(image[ramdisk_offset:ramdisk_offset + ramdisk_size], args.maintainer, args.support_url)
 print(f'Structural checks passed: {len(image)} bytes; kernel, ramdisk and DTB present; OS {os_components}, system patch {patch_month}')

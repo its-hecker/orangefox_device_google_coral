@@ -1,0 +1,112 @@
+name: Publish verified maintainer update
+on:
+  workflow_run:
+    workflows: [Experimental coral OrangeFox]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: coral-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.id == 38088385193 && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Resolve the successful maintainer build
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess
+          p=json.load(open('release/maintainer-update.json'))
+          def api(path):
+              return json.loads(subprocess.check_output(['gh','api',f'repos/{os.environ["GH_REPO"]}/{path}']))
+          r=api(f'actions/runs/{p["run_id"]}')
+          assert r['status']=='completed' and r['conclusion']=='success'
+          assert r['head_sha']==p['commit'] and r['head_branch']=='main'
+          assert r['repository']['full_name']==os.environ['GH_REPO']
+          assert r['head_repository']['full_name']==os.environ['GH_REPO']
+          artifacts=api(f'actions/runs/{p["run_id"]}/artifacts')['artifacts']
+          matches=[a for a in artifacts if a['name']==p['artifact_name'] and not a['expired']]
+          assert len(matches)==1, 'Expected one completed recovery image artifact'
+          a=matches[0]
+          assert a['workflow_run']['head_sha']==p['commit'] and a['workflow_run']['id']==p['run_id']
+          p['artifact_id']=a['id']
+          with open('release/resolved-maintainer.json','w') as f: json.dump(p,f)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write(f'artifact_id={a["id"]}\nrun_id={p["run_id"]}\n')
+          PY
+      - uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ steps.build.outputs.artifact_id }}
+          run-id: ${{ steps.build.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: release-artifact
+          merge-multiple: true
+      - name: Check runtime configuration and compiled About details
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/validate_image.py release-artifact/OrangeFox-unofficial-coral.img --keymaster-version 4.x --os-version 17 --os-patch-level 2026-09-01 --maintainer Hecker --support-url https://t.me/pixel4seriesofficial
+      - name: Publish regular release with verified checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, re, subprocess
+          p=json.load(open('release/resolved-maintainer.json'))
+          d=pathlib.Path('release-artifact')
+          names=['OrangeFox-unofficial-coral.img','SHA256SUMS','device-tree-commit.txt','kernel-metadata.json','source-manifest.xml']
+          assert set(x.name for x in d.iterdir())==set(names)
+          assert re.fullmatch(r'[A-Za-z0-9._-]+',p['tag'])
+          assert (d/names[0]).stat().st_size==67108864
+          p['image_sha256']=hashlib.sha256((d/names[0]).read_bytes()).hexdigest()
+          assert (d/'SHA256SUMS').read_text().strip()==p['image_sha256']+'  '+names[0]
+          assert (d/'device-tree-commit.txt').read_text().strip()==p['commit']
+          subprocess.run(['sha256sum','-c','SHA256SUMS'],cwd=d,check=True)
+          notes=pathlib.Path('release/notes-2026-10-11.md').read_text()
+          pathlib.Path('release/resolved-notes.md').write_text(notes+'\nImage SHA256: `'+p['image_sha256']+'`\n')
+          endpoint=f'repos/{os.environ["GH_REPO"]}/releases/tags/{p["tag"]}'
+          existing=subprocess.run(['gh','api',endpoint],capture_output=True,text=True)
+          published=False
+          if existing.returncode==0:
+              release=json.loads(existing.stdout)
+              if not release['draft']:
+                  assets={a['name']:a for a in release['assets']}
+                  assert set(assets)==set(names)
+                  for n in names:
+                      assert assets[n]['state']=='uploaded'
+                      assert assets[n]['digest']=='sha256:'+hashlib.sha256((d/n).read_bytes()).hexdigest()
+                  published=True
+          else:
+              subprocess.run(['gh','release','create',p['tag'],'--target',os.environ['GITHUB_SHA'],'--title','OrangeFox R12.0 Unofficial — Coral — Hecker maintainer update','--notes-file','release/resolved-notes.md','--draft'],check=True)
+          if not published:
+              subprocess.run(['gh','release','upload',p['tag'],*[str(d/n) for n in names],'--clobber'],check=True)
+          subprocess.run(['gh','release','edit',p['tag'],'--draft=false','--prerelease=false','--latest'],check=True)
+          p['prerelease']=False
+          p['publication_revision']=1
+          p.pop('maintainer',None)
+          p.pop('support_url',None)
+          pathlib.Path('release/latest.json').write_text(json.dumps(p)+'\n')
+          PY
+      - name: Record published artifact for future release runs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add release/latest.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record verified Hecker maintainer release [skip ci]'
+            git push origin HEAD:main
+          fi

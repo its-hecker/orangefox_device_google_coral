@@ -133,3 +133,23 @@ def validate_runtime(packed, keymaster_version):
     if errors:
         raise ValueError('\n'.join(errors))
     print('Ramdisk checks passed: Keymaster and Health startup configured; required implementations packaged')
+
+
+def validate_branding(packed, maintainer, support_url):
+    """Check the compiled maintainer and the actual packaged About page."""
+    files = ramdisk_files(packed)
+    recovery = files.get('system/bin/recovery', b'')
+    if maintainer:
+        if maintainer.encode() + b'\0' not in recovery:
+            raise ValueError('Expected maintainer is missing from the recovery executable')
+        if b'Testing build (unofficial)\0' in recovery:
+            raise ValueError('Recovery executable still contains the default maintainer')
+    theme = ET.fromstring(files['twres/pages/settings.xml'])
+    texts = {node.text for node in theme.iter('text')}
+    if maintainer and '%of_maintainer%' not in texts:
+        raise ValueError('Packaged About page does not display the maintainer variable')
+    if support_url:
+        label = 'Support: ' + support_url.removeprefix('https://')
+        if label not in texts:
+            raise ValueError('Support link is missing from the packaged About page')
+    print(f'About checks passed: maintainer {maintainer}; support {support_url}')

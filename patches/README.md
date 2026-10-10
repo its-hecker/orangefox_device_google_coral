@@ -41,3 +41,9 @@ before decryption services start, including temporary fastboot boots. The host
 test runs the actual script with isolated property and mount substitutes,
 verifies the OS/system/vendor values before `crypto.ready`, and verifies
 cleanup. It does not exercise Keymaster, metadata keys or PIN decryption.
+
+`0003-show-coral-maintainer-support.patch` updates the portrait About page to
+show the Pixel 4 Series support URL beneath the compiled maintainer name.
+`OF_MAINTAINER := Hecker` in `twrp.mk` sets that name; the older
+`FOX_MAINTAINER` environment variable does not set this About field. Image
+validation checks both the executable and the packaged About XML.

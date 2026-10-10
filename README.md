@@ -9,8 +9,9 @@ Experimental port for Infinity Android 17 on Pixel 4 XL (coral). The latest
 tester report and logs confirm PIN/data decryption and automatic battery
 startup after the fixes. Touch, ADB and MTP were reported working during
 bring-up. Settings, brightness changes and a theme reload completed without a
-recorded recovery crash or restart. Console stability, longer runs and ROM
-installation still need separate validation. These results apply to the tested
+recorded recovery crash or restart. The tester subsequently reported a successful ROM ZIP
+installation and boot to Android, plus a small recovery-transferred file
+surviving reboot. Console stability and longer runs still need validation. These results apply to the tested
 Coral/Infinity installation.
 
 Based on TeamWin/android_device_google_coral, android-12.1 commit b3f760ee3d17805e895c0d6e0387fd59d1f39120. Original copyright and licensing notices are preserved.

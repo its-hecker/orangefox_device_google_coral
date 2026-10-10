@@ -3,8 +3,9 @@
 This is an experimental recovery. The latest tester report and logs confirm
 PIN/data decryption and automatic battery startup on a Pixel 4 XL with
 Infinity Android 17. Settings and brightness changes completed without a
-recorded recovery crash. Console stability, longer runs and ROM installation
-still require separate validation. The 12.1 build platform alone does not establish support
+recorded recovery crash. The tester subsequently reported a successful ROM ZIP installation and boot
+to Android, plus a small recovery-transferred file surviving reboot (after
+`adb shell sync`). Console stability and longer runs still require validation. The 12.1 build platform alone does not establish support
 for other ROM encryption configurations. No automatic data format, encryption
 disable, AVB disable or permanent recovery installation is provided.
 
