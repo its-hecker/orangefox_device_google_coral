@@ -135,8 +135,14 @@ def main():
     old_label = b'<text>%of_maintainer%</text>'
     settings = files['twres/pages/settings.xml']
     assert settings.count(old_label) == 1
+    old_link = b'<text>Support: t.me/pixel4seriesofficial</text>'
+    assert settings.count(old_link) == 1
+    channel_url = config['channel_url']
+    assert re.fullmatch(r'https://t\.me/[A-Za-z0-9_]+', channel_url), 'Invalid channel URL'
+    channel_label = ('<text>Channel: ' + channel_url.removeprefix('https://') + '</text>').encode()
+    settings = settings.replace(old_label, b'<text>%of_maintainer% (Maintainer)</text>').replace(old_link, channel_label)
     replacements = {
-        'twres/pages/settings.xml': settings.replace(old_label, b'<text>%of_maintainer% (Maintainer)</text>'),
+        'twres/pages/settings.xml': settings,
         'twres/images/Default/About/maintainer.png': args.avatar.read_bytes(),
     }
     updated = gzip.compress(replace_entries(archive, replacements), compresslevel=9, mtime=0)
@@ -168,6 +174,7 @@ def main():
         'base_image_sha256': sha(image), 'base_device_commit': config['base_commit'],
         'packaging_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
         'modified_ramdisk_paths': sorted(replacements), 'avatar_sha256': config['avatar_sha256'],
+        'channel_url': channel_url,
         'kernel_sha256': sha(kernel), 'dtb_sha256': sha(dtb),
         'image_sha256': sha(args.output.read_bytes()), 'avbtool_revision': config['avbtool_revision'],
     }

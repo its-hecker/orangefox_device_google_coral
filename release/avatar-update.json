@@ -7,6 +7,9 @@
   "avatar_sha256": "f4818aa7acc691df48fa82e75654a9e205129730b24f42f3922efe6c4bf2470b",
   "avbtool_revision": "5ace2cf8e07d0807f6e92f649b400f1bd473e1ed",
   "avbtool_sha256": "a9ec360fc5395db9b72d36c03af59ff984f4eefcc349dc32a556de7f8ed892ab",
-  "tag": "R12.0-coral-unofficial-20261011-avatar",
-  "publication_revision": 2
+  "channel_url": "https://t.me/pixel4seriesupdates",
+  "tag": "R12.0-coral-unofficial-20261011-channel",
+  "notes_file": "release/notes-channel-2026-10-11.md",
+  "release_title": "OrangeFox R12.0 Unofficial — Coral — About channel fix",
+  "publication_revision": 3
 }

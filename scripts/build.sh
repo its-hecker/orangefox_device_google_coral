@@ -113,7 +113,7 @@ maintainer=$(get_build_var OF_MAINTAINER)
 [[ "$maintainer" = Hecker ]]
 [[ -n "$boot_os_version" && -n "$boot_os_patch" && -n "$boot_firmware_patch" ]]
 version_checks=(--maintainer "$maintainer" --maintainer-label '%of_maintainer% (Maintainer)'
-    --maintainer-avatar "$port_root/theme/maintainer.png" --support-url https://t.me/pixel4seriesofficial
+    --maintainer-avatar "$port_root/theme/maintainer.png" --channel-url https://t.me/pixel4seriesupdates
     --os-version "$boot_os_version" --os-patch-level "$boot_os_patch"
     --avb-tool "$build_root/android/external/avb/avbtool.py" --boot-security-patch "$boot_firmware_patch")
 if [[ "$build_stage" = kernel ]]; then

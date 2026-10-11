@@ -1,4 +1,4 @@
-name: Package and publish Coral maintainer avatar
+name: Package and publish Coral About update
 on:
   push:
     branches: [main]
@@ -64,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/package_about_update.py base-artifact/OrangeFox-unofficial-coral.img artifacts/OrangeFox-unofficial-coral.img --avatar theme/maintainer.png --avb-tool avbtool.py
-          python3 scripts/validate_image.py artifacts/OrangeFox-unofficial-coral.img --keymaster-version 4.x --os-version 17 --os-patch-level 2026-09-01 --avb-tool avbtool.py --boot-security-patch 2022-10-05 --maintainer Hecker --maintainer-label '%of_maintainer% (Maintainer)' --maintainer-avatar theme/maintainer.png --support-url https://t.me/pixel4seriesofficial
+          python3 scripts/validate_image.py artifacts/OrangeFox-unofficial-coral.img --keymaster-version 4.x --os-version 17 --os-patch-level 2026-09-01 --avb-tool avbtool.py --boot-security-patch 2022-10-05 --maintainer Hecker --maintainer-label '%of_maintainer% (Maintainer)' --maintainer-avatar theme/maintainer.png --channel-url https://t.me/pixel4seriesupdates
           python3 - <<'PY'
           import hashlib, json, os, pathlib, shutil
           p=json.load(open('release/avatar-update.json'))
@@ -79,7 +79,7 @@ jobs:
       - uses: actions/upload-artifact@v6
         id: image
         with:
-          name: OrangeFox-coral-avatar-${{ github.run_id }}-${{ github.run_attempt }}
+          name: OrangeFox-coral-about-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/
           if-no-files-found: error
           retention-days: 14
@@ -101,7 +101,8 @@ jobs:
           assert (d/'SHA256SUMS').read_text().strip()==image_sha+'  '+names[0]
           theme=json.loads((d/'theme-update.json').read_text())
           assert theme['packaging_commit']==os.environ['GITHUB_SHA'] and theme['image_sha256']==image_sha
-          notes=pathlib.Path('release/notes-avatar-2026-10-11.md').read_text()
+          assert theme['channel_url']==config['channel_url']
+          notes=pathlib.Path(config['notes_file']).read_text()
           notes+='\nTheme source commit: `'+os.environ['GITHUB_SHA']+'`\nImage SHA256: `'+image_sha+'`\n'
           pathlib.Path('release/avatar-resolved-notes.md').write_text(notes)
           endpoint=f'repos/{os.environ["GH_REPO"]}/releases/tags/{config["tag"]}'
@@ -117,12 +118,12 @@ jobs:
                       assert assets[name]['digest']=='sha256:'+hashlib.sha256((d/name).read_bytes()).hexdigest()
                   published=True
           else:
-              subprocess.run(['gh','release','create',config['tag'],'--target',os.environ['GITHUB_SHA'],'--title','OrangeFox R12.0 Unofficial — Coral — Maintainer avatar','--notes-file','release/avatar-resolved-notes.md','--draft'],check=True)
+              subprocess.run(['gh','release','create',config['tag'],'--target',os.environ['GITHUB_SHA'],'--title',config['release_title'],'--notes-file','release/avatar-resolved-notes.md','--draft'],check=True)
           if not published:
               subprocess.run(['gh','release','upload',config['tag'],*[str(d/name) for name in names],'--clobber'],check=True)
           subprocess.run(['gh','release','edit',config['tag'],'--draft=false','--prerelease=false','--latest'],check=True)
           p={'run_id':int(os.environ['GITHUB_RUN_ID']), 'artifact_id':int(os.environ['IMAGE_ARTIFACT_ID']),
-             'artifact_name':f'OrangeFox-coral-avatar-{os.environ["GITHUB_RUN_ID"]}-{os.environ["GITHUB_RUN_ATTEMPT"]}',
+             'artifact_name':f'OrangeFox-coral-about-{os.environ["GITHUB_RUN_ID"]}-{os.environ["GITHUB_RUN_ATTEMPT"]}',
              'commit':os.environ['GITHUB_SHA'], 'image_sha256':image_sha, 'tag':config['tag'],
              'prerelease':False, 'theme_update':True, 'publication_revision':1}
           pathlib.Path('release/latest.json').write_text(json.dumps(p)+'\n')
@@ -135,6 +136,6 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add release/latest.json
           if ! git diff --cached --quiet; then
-            git commit -m 'Record verified maintainer avatar release [skip ci]'
+            git commit -m 'Record verified About update release [skip ci]'
             git push origin HEAD:main
           fi

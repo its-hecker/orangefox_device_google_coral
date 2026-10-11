@@ -137,7 +137,7 @@ def validate_runtime(packed, keymaster_version):
     print('Ramdisk checks passed: Keymaster and Health startup configured; required implementations packaged')
 
 
-def validate_branding(packed, maintainer, support_url, maintainer_label=None, maintainer_avatar=None):
+def validate_branding(packed, maintainer, support_url, maintainer_label=None, maintainer_avatar=None, channel_url=None):
     """Check the compiled maintainer and the actual packaged About page."""
     files = ramdisk_files(packed)
     recovery = files.get('system/bin/recovery', b'')
@@ -165,4 +165,15 @@ def validate_branding(packed, maintainer, support_url, maintainer_label=None, ma
         label = 'Support: ' + support_url.removeprefix('https://')
         if label not in texts:
             raise ValueError('Support link is missing from the packaged About page')
-    print(f'About checks passed: maintainer {maintainer}; support {support_url}')
+    if channel_url:
+        label = 'Channel: ' + channel_url.removeprefix('https://')
+        if label not in texts:
+            raise ValueError('Channel link is missing from the packaged About page')
+        if any('pixel4seriesofficial' in text for text in texts if text):
+            raise ValueError('About page still displays the old channel link')
+    details = [f'maintainer {maintainer}']
+    if support_url:
+        details.append(f'support {support_url}')
+    if channel_url:
+        details.append(f'channel {channel_url}')
+    print('About checks passed: ' + '; '.join(details))

@@ -2,6 +2,7 @@
 
 Maintainer: **Hecker** ([its-hecker](https://github.com/its-hecker)).
 Support: [Pixel 4 Series](https://t.me/pixel4seriesofficial).
+Channel: [Pixel 4 Series Updates](https://t.me/pixel4seriesupdates).
 
 [Download the tested release](https://github.com/its-hecker/orangefox_device_google_coral/releases/tag/R12.0-coral-unofficial-20261010).
 
