@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Check Coral's packaged startup services; this cannot test device hardware."""
 import gzip
+import hashlib
 import pathlib
 import re
+import struct
 import xml.etree.ElementTree as ET
 
 
@@ -135,7 +137,7 @@ def validate_runtime(packed, keymaster_version):
     print('Ramdisk checks passed: Keymaster and Health startup configured; required implementations packaged')
 
 
-def validate_branding(packed, maintainer, support_url):
+def validate_branding(packed, maintainer, support_url, maintainer_label=None, maintainer_avatar=None):
     """Check the compiled maintainer and the actual packaged About page."""
     files = ramdisk_files(packed)
     recovery = files.get('system/bin/recovery', b'')
@@ -148,8 +150,17 @@ def validate_branding(packed, maintainer, support_url):
             raise ValueError('Recovery executable still contains the default maintainer')
     theme = ET.fromstring(files['twres/pages/settings.xml'])
     texts = {node.text for node in theme.iter('text')}
-    if maintainer and '%of_maintainer%' not in texts:
+    if maintainer and (maintainer_label or '%of_maintainer%') not in texts:
         raise ValueError('Packaged About page does not display the maintainer variable')
+    if maintainer_avatar:
+        avatar = files.get('twres/images/Default/About/maintainer.png', b'')
+        expected_avatar = pathlib.Path(maintainer_avatar).read_bytes()
+        if hashlib.sha256(avatar).digest() != hashlib.sha256(expected_avatar).digest():
+            raise ValueError('Packaged maintainer avatar differs from the selected picture')
+        if not avatar.startswith(b'\x89PNG\r\n\x1a\n') or struct.unpack_from('>II', avatar, 16) != (192, 192):
+            raise ValueError('Maintainer avatar must be a 192x192 PNG')
+        if not any(n.get('resource') == 'maintainer_img' for n in theme.iter('image')):
+            raise ValueError('About page does not display the maintainer avatar')
     if support_url:
         label = 'Support: ' + support_url.removeprefix('https://')
         if label not in texts:

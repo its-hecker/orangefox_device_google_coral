@@ -60,6 +60,7 @@ jobs:
           p=json.load(open('release/latest.json'))
           d=pathlib.Path('release-artifact')
           names=['OrangeFox-unofficial-coral.img','SHA256SUMS','device-tree-commit.txt','kernel-metadata.json','source-manifest.xml']
+          if p.get('theme_update'): names.append('theme-update.json')
           assert set(x.name for x in d.iterdir())==set(names)
           image=d/names[0]
           assert image.stat().st_size==67108864

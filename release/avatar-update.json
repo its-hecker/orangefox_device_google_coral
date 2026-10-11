@@ -1,0 +1,12 @@
+{
+  "base_run_id": 38088385193,
+  "base_artifact_id": 11684997889,
+  "base_artifact_name": "OrangeFox-unofficial-coral-38088385193-1",
+  "base_commit": "6d3c046d8a33ff4194a1e9f17f835c3786c87767",
+  "base_image_sha256": "31d542c1f26750c6fcbfb529ad5465e97339e44363dd6962ab44dc807ec30cab",
+  "avatar_sha256": "f4818aa7acc691df48fa82e75654a9e205129730b24f42f3922efe6c4bf2470b",
+  "avbtool_revision": "5ace2cf8e07d0807f6e92f649b400f1bd473e1ed",
+  "avbtool_sha256": "a9ec360fc5395db9b72d36c03af59ff984f4eefcc349dc32a556de7f8ed892ab",
+  "tag": "R12.0-coral-unofficial-20261011-avatar",
+  "publication_revision": 1
+}

@@ -54,6 +54,7 @@ if git -C bootable/recovery apply --check "$support_patch"; then
 else
     git -C bootable/recovery apply --reverse --check "$support_patch"
 fi
+install -m 644 "$port_root/theme/maintainer.png" bootable/recovery/gui/theme/portrait_hdpi/images/Default/About/maintainer.png
 slider_patch="$port_root/patches/0001-fit-slider-handles-to-scaled-images.patch"
 git -C bootable/recovery apply --check "$slider_patch"
 git -C bootable/recovery apply "$slider_patch"
@@ -111,7 +112,8 @@ boot_firmware_patch=$(get_build_var BOOT_SECURITY_PATCH)
 maintainer=$(get_build_var OF_MAINTAINER)
 [[ "$maintainer" = Hecker ]]
 [[ -n "$boot_os_version" && -n "$boot_os_patch" && -n "$boot_firmware_patch" ]]
-version_checks=(--maintainer "$maintainer" --support-url https://t.me/pixel4seriesofficial
+version_checks=(--maintainer "$maintainer" --maintainer-label '%of_maintainer% (Maintainer)'
+    --maintainer-avatar "$port_root/theme/maintainer.png" --support-url https://t.me/pixel4seriesofficial
     --os-version "$boot_os_version" --os-patch-level "$boot_os_patch"
     --avb-tool "$build_root/android/external/avb/avbtool.py" --boot-security-patch "$boot_firmware_patch")
 if [[ "$build_stage" = kernel ]]; then

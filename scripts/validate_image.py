@@ -16,6 +16,8 @@ parser.add_argument('--os-patch-level', help='Expected system patch month in the
 parser.add_argument('--avb-tool', type=pathlib.Path, help='Build-tree avbtool.py for inspecting boot AVB metadata')
 parser.add_argument('--boot-security-patch', help='Expected boot firmware patch in the AVB property descriptor')
 parser.add_argument('--maintainer', help='Expected compiled OrangeFox maintainer name')
+parser.add_argument('--maintainer-label', help='Expected literal About label containing the maintainer variable')
+parser.add_argument('--maintainer-avatar', type=pathlib.Path, help='Expected packaged 192x192 maintainer PNG')
 parser.add_argument('--support-url', help='Expected support URL on the packaged About page')
 args = parser.parse_args()
 image = args.image.read_bytes()
@@ -61,5 +63,6 @@ if args.keymaster_version:
     validate_runtime(image[ramdisk_offset:ramdisk_offset + ramdisk_size], args.keymaster_version)
 if args.maintainer or args.support_url:
     ramdisk_offset = page_size + align(kernel_size)
-    validate_branding(image[ramdisk_offset:ramdisk_offset + ramdisk_size], args.maintainer, args.support_url)
+    validate_branding(image[ramdisk_offset:ramdisk_offset + ramdisk_size], args.maintainer, args.support_url,
+                     args.maintainer_label, args.maintainer_avatar)
 print(f'Structural checks passed: {len(image)} bytes; kernel, ramdisk and DTB present; OS {os_components}, system patch {patch_month}')

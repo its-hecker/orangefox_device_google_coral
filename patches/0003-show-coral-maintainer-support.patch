@@ -1,5 +1,14 @@
 --- a/gui/theme/portrait_hdpi/pages/settings.xml
 +++ b/gui/theme/portrait_hdpi/pages/settings.xml
+@@ -1144,7 +1144,7 @@
+ 				<condition var1="of_maintainer" op="!=" var2="2"/>
+ 				<condition var1="of_maintainer" op="!=" var2="1"/>
+ 				<placement x="%card_txt_x%" y="%card_img4_y%"/>
+-				<text>%of_maintainer%</text>
++				<text>%of_maintainer% (Maintainer)</text>
+ 			</text>
+ 
+ 			<text style="about_info">
 @@ -1152,7 +1152,7 @@
  				<condition var1="of_maintainer" op="!=" var2="2"/>
  				<condition var1="of_maintainer" op="!=" var2="1"/>

@@ -43,7 +43,9 @@ verifies the OS/system/vendor values before `crypto.ready`, and verifies
 cleanup. It does not exercise Keymaster, metadata keys or PIN decryption.
 
 `0003-show-coral-maintainer-support.patch` updates the portrait About page to
-show the Pixel 4 Series support URL beneath the compiled maintainer name.
+show `Hecker (Maintainer)` with the Pixel 4 Series support URL beneath it.
+The build installs `theme/maintainer.png`, the maintainer's selected circular
+cat avatar, in the existing 192x192 About image resource.
 `OF_MAINTAINER := Hecker` in `twrp.mk` sets that name; the older
 `FOX_MAINTAINER` environment variable does not set this About field. Image
-validation checks both the executable and the packaged About XML.
+validation checks the executable, packaged About XML and exact avatar bytes.

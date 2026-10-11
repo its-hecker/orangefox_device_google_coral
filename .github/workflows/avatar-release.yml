@@ -1,0 +1,140 @@
+name: Package and publish Coral maintainer avatar
+on:
+  push:
+    branches: [main]
+    paths: [release/avatar-update.json]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: coral-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Resolve checksum-pinned source build
+        id: base
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess
+          p=json.load(open('release/avatar-update.json'))
+          def api(path):
+              return json.loads(subprocess.check_output(['gh','api',f'repos/{os.environ["GH_REPO"]}/{path}']))
+          r=api(f'actions/runs/{p["base_run_id"]}')
+          assert r['status']=='completed' and r['conclusion']=='success'
+          assert r['head_sha']==p['base_commit'] and r['head_branch']=='main'
+          assert r['head_repository']['full_name']==os.environ['GH_REPO']
+          a=api(f'actions/artifacts/{p["base_artifact_id"]}')
+          assert not a['expired'] and a['name']==p['base_artifact_name']
+          assert a['workflow_run']['id']==p['base_run_id'] and a['workflow_run']['head_sha']==p['base_commit']
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write(f'run_id={p["base_run_id"]}\nartifact_id={p["base_artifact_id"]}\n')
+          PY
+      - uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ steps.base.outputs.artifact_id }}
+          run-id: ${{ steps.base.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: base-artifact
+          merge-multiple: true
+      - name: Prepare pinned inspection tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --user capstone==5.0.9 pyelftools==0.33
+          python3 - <<'PY'
+          import base64, hashlib, json, pathlib, urllib.request
+          p=json.load(open('release/avatar-update.json'))
+          url=f'https://android.googlesource.com/platform/external/avb/+/{p["avbtool_revision"]}/avbtool.py?format=TEXT'
+          data=base64.b64decode(urllib.request.urlopen(url,timeout=60).read())
+          assert hashlib.sha256(data).hexdigest()==p['avbtool_sha256']
+          pathlib.Path('avbtool.py').write_bytes(data)
+          PY
+      - name: Package and verify About assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/package_about_update.py base-artifact/OrangeFox-unofficial-coral.img artifacts/OrangeFox-unofficial-coral.img --avatar theme/maintainer.png --avb-tool avbtool.py
+          python3 scripts/validate_image.py artifacts/OrangeFox-unofficial-coral.img --keymaster-version 4.x --os-version 17 --os-patch-level 2026-09-01 --avb-tool avbtool.py --boot-security-patch 2022-10-05 --maintainer Hecker --maintainer-label '%of_maintainer% (Maintainer)' --maintainer-avatar theme/maintainer.png --support-url https://t.me/pixel4seriesofficial
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, shutil
+          p=json.load(open('release/avatar-update.json'))
+          d=pathlib.Path('artifacts')
+          assert pathlib.Path('base-artifact/device-tree-commit.txt').read_text().strip()==p['base_commit']
+          for name in ['source-manifest.xml','kernel-metadata.json']:
+              shutil.copyfile('base-artifact/'+name,d/name)
+          (d/'device-tree-commit.txt').write_text(os.environ['GITHUB_SHA']+'\n')
+          digest=hashlib.sha256((d/'OrangeFox-unofficial-coral.img').read_bytes()).hexdigest()
+          (d/'SHA256SUMS').write_text(digest+'  OrangeFox-unofficial-coral.img\n')
+          PY
+      - uses: actions/upload-artifact@v6
+        id: image
+        with:
+          name: OrangeFox-coral-avatar-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish verified regular release
+        env:
+          IMAGE_ARTIFACT_ID: ${{ steps.image.outputs.artifact-id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, re, subprocess
+          config=json.load(open('release/avatar-update.json'))
+          d=pathlib.Path('artifacts')
+          names=['OrangeFox-unofficial-coral.img','SHA256SUMS','device-tree-commit.txt','kernel-metadata.json','source-manifest.xml','theme-update.json']
+          assert set(x.name for x in d.iterdir())==set(names)
+          assert re.fullmatch(r'[A-Za-z0-9._-]+',config['tag'])
+          image_sha=hashlib.sha256((d/names[0]).read_bytes()).hexdigest()
+          assert (d/names[0]).stat().st_size==67108864
+          assert (d/'SHA256SUMS').read_text().strip()==image_sha+'  '+names[0]
+          theme=json.loads((d/'theme-update.json').read_text())
+          assert theme['packaging_commit']==os.environ['GITHUB_SHA'] and theme['image_sha256']==image_sha
+          notes=pathlib.Path('release/notes-avatar-2026-10-11.md').read_text()
+          notes+='\nTheme source commit: `'+os.environ['GITHUB_SHA']+'`\nImage SHA256: `'+image_sha+'`\n'
+          pathlib.Path('release/avatar-resolved-notes.md').write_text(notes)
+          endpoint=f'repos/{os.environ["GH_REPO"]}/releases/tags/{config["tag"]}'
+          result=subprocess.run(['gh','api',endpoint],capture_output=True,text=True)
+          published=False
+          if result.returncode==0:
+              release=json.loads(result.stdout)
+              if not release['draft']:
+                  assets={a['name']:a for a in release['assets']}
+                  assert set(assets)==set(names)
+                  for name in names:
+                      assert assets[name]['state']=='uploaded' and assets[name]['size']==(d/name).stat().st_size
+                      assert assets[name]['digest']=='sha256:'+hashlib.sha256((d/name).read_bytes()).hexdigest()
+                  published=True
+          else:
+              subprocess.run(['gh','release','create',config['tag'],'--target',os.environ['GITHUB_SHA'],'--title','OrangeFox R12.0 Unofficial — Coral — Maintainer avatar','--notes-file','release/avatar-resolved-notes.md','--draft'],check=True)
+          if not published:
+              subprocess.run(['gh','release','upload',config['tag'],*[str(d/name) for name in names],'--clobber'],check=True)
+          subprocess.run(['gh','release','edit',config['tag'],'--draft=false','--prerelease=false','--latest'],check=True)
+          p={'run_id':int(os.environ['GITHUB_RUN_ID']), 'artifact_id':int(os.environ['IMAGE_ARTIFACT_ID']),
+             'artifact_name':f'OrangeFox-coral-avatar-{os.environ["GITHUB_RUN_ID"]}-{os.environ["GITHUB_RUN_ATTEMPT"]}',
+             'commit':os.environ['GITHUB_SHA'], 'image_sha256':image_sha, 'tag':config['tag'],
+             'prerelease':False, 'theme_update':True, 'publication_revision':1}
+          pathlib.Path('release/latest.json').write_text(json.dumps(p)+'\n')
+          PY
+      - name: Record published image provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add release/latest.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record verified maintainer avatar release [skip ci]'
+            git push origin HEAD:main
+          fi
