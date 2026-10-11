@@ -16,3 +16,6 @@ sudo mkswap "$coral_swap_file"
 sudo swapon "$coral_swap_file"
 free -h
 df -h
+
+# Check short maintainer strings optimized into AArch64 instructions.
+python3 -m pip install --user capstone==5.0.9 pyelftools==0.33

@@ -141,7 +141,9 @@ def validate_branding(packed, maintainer, support_url):
     recovery = files.get('system/bin/recovery', b'')
     if maintainer:
         if maintainer.encode() + b'\0' not in recovery:
-            raise ValueError('Expected maintainer is missing from the recovery executable')
+            from read_compiled_maintainer import has_inline_maintainer
+            if not has_inline_maintainer(recovery, maintainer):
+                raise ValueError('Expected maintainer assignment is missing from the recovery executable')
         if b'Testing build (unofficial)\0' in recovery:
             raise ValueError('Recovery executable still contains the default maintainer')
     theme = ET.fromstring(files['twres/pages/settings.xml'])
