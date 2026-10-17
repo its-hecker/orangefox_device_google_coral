@@ -1,5 +1,31 @@
 # Pixel 4 XL bring-up
 
+## Freshly formatted storage test (October 17 fix)
+
+Use the image from branch `fix/fresh-data-storage` on Coral. If data is already
+freshly formatted from the reported failure, test that state directly; another
+format is unnecessary. Temporarily boot the image with
+`fastboot boot OrangeFox-unofficial-coral.img`.
+
+Without running the manual mkdir/bind workaround, confirm that Files displays
+internal storage, `/data/media` exists, `/sdcard` is bound to it, and a small
+MTP file transfer succeeds when MTP is enabled. The recovery log should contain
+`Fresh userdata: prepared /data/media staging storage`. Confirm the file remains
+available after rebooting back into this test recovery. The helper intentionally
+leaves `/data/media/0` for Android to create.
+
+For a later clean installation that already requires formatting, confirm storage
+also works immediately after Format Data in the same recovery session. Follow
+the ROM's installation instructions and confirm a known-working ROM initializes
+FBE and boots successfully; check the location and visibility of any staged
+files after Android creates user 0. Staging files under `/data/media` is not a
+promise that Android will migrate them into `/data/media/0`.
+
+On an initialized, PIN-protected installation, confirm the normal PIN prompt,
+existing filenames and MTP after unlocking. The fresh-userdata marker must not
+appear for that installation. Do not format an initialized installation merely
+to test this change. Collect recovery/logcat/dmesg logs for any failure.
+
 This is an experimental recovery. The latest tester report and logs confirm
 PIN/data decryption and automatic battery startup on a Pixel 4 XL with
 Infinity Android 17. Settings and brightness changes completed without a

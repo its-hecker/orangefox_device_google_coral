@@ -1,0 +1,160 @@
+--- a/partition.cpp
++++ b/partition.cpp
+@@ -23,6 +23,8 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/mount.h>
++#include <sys/ioctl.h>
++#include <linux/fs.h>
+ #include <sys/param.h>
+ #include <sys/stat.h>
+ #include <sys/types.h>
+@@ -2283,11 +2285,7 @@
+ #ifndef TW_OEM_BUILD
+ 		gui_msg("format_data_msg=You may need to reboot recovery to be able to use /data again.");
+ #endif
+-		if (Is_FBE) {
+-		    if (DataManager::GetIntValue(FOX_DISABLE_FORCED_ENCRYPTION) != 1) {
+-			gui_msg(Msg(msg::kWarning, "data_media_fbe_msg=OrangeFox will not recreate /data/media on an FBE device. Please reboot into your rom to create /data/media."));
+-		    }
+-		} else {
++		if (!Is_FBE) {
+ 			if (Has_Data_Media && !Symlink_Mount_Point.empty()) {
+ 				if (Mount(false))
+ 					PartitionManager.Add_MTP_Storage(MTP_Storage_ID);
+@@ -3403,6 +3401,96 @@
+ 	} else {
+ 		Is_Present = false;
+ 	}
++}
++
++bool TWPartition::Prepare_Fresh_Data_Media() {
++	// A successful /data mount alone does not mean that existing FBE files
++	// are unlocked. Accept only the small layout left by a fresh format.
++	if (Mount_Point != "/data" || !Has_Data_Media || Key_Directory.empty() ||
++			Mount_Read_Only || !Mount(false))
++		return false;
++
++	struct statfs fs;
++	if (statfs(Mount_Point.c_str(), &fs) != 0 || (fs.f_flags & MS_RDONLY) ||
++			(fs.f_type != 0xEF53 && fs.f_type != 0xF2F52010))
++		return false; // Never create storage on a tmpfs or an unmounted /data.
++
++	DIR* directory = opendir(Mount_Point.c_str());
++	if (!directory)
++		return false;
++	bool fresh = true;
++	struct dirent* entry;
++	while ((errno = 0, entry = readdir(directory)) != nullptr) {
++		const string name = entry->d_name;
++		if (name == "." || name == "..")
++			continue;
++		struct stat info;
++		if ((name != "lost+found" && name != "recovery" && name != "media") ||
++				lstat((Mount_Point + "/" + name).c_str(), &info) != 0 || !S_ISDIR(info.st_mode)) {
++			fresh = false;
++			break;
++		}
++	}
++	const int scan_error = errno;
++	closedir(directory);
++	if (!fresh || scan_error)
++		return false; // Includes unencrypted/key, misc/vold keys and user directories.
++
++	const string media = Mount_Point + "/media";
++	struct stat info;
++	if (lstat((media + "/0").c_str(), &info) == 0 || errno != ENOENT)
++		return false; // Android must create user 0 and its CE encryption policy.
++
++	bool created = false;
++	if (lstat(media.c_str(), &info) != 0) {
++		if (errno != ENOENT || mkdir(media.c_str(), 0770) != 0)
++			return false;
++		created = true;
++	}
++	const int fd = open(media.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
++	if (fd < 0)
++		return false;
++	int attributes = 0;
++	const bool plain = ioctl(fd, FS_IOC_GETFLAGS, &attributes) == 0 && !(attributes & FS_ENCRYPT_FL);
++	close(fd);
++	if (!plain)
++		return false; // Fail closed if media itself has an encryption policy.
++
++	if (created) {
++		// Apply the file_contexts label, without borrowing an old user-0 policy.
++		char* context = nullptr;
++		if (selinux_handle && selabel_lookup(selinux_handle, &context, media.c_str(), S_IFDIR) == 0) {
++			const int result = lsetfilecon(media.c_str(), context);
++			freecon(context);
++			if (result != 0)
++				return false;
++		}
++	}
++	if (chown(media.c_str(), 1023, 1023) != 0 || chmod(media.c_str(), 0770) != 0)
++		return false;
++
++	Setup_Data_Media();
++	// Setup_Data_Media selects /data/media because no user-0 directory exists.
++	// Mount() returns early for an already mounted /data, so bind explicitly.
++	if (umount2(Symlink_Mount_Point.c_str(), 0) != 0 && errno != EINVAL && errno != ENOENT)
++		return false;
++	if (!Bind_Mount(false))
++		return false;
++
++	Is_FBE = false; // No FBE users/keys exist yet; retain the metadata mapping.
++	Is_Encrypted = false;
++	Is_Decrypted = true;
++	DataManager::SetValue(TW_IS_FBE, 0);
++	DataManager::SetValue(TW_IS_ENCRYPTED, 0);
++	DataManager::SetValue(TW_IS_DECRYPTED, 1);
++	DataManager::SetValue(TW_CRYPTO_PWTYPE, 0);
++	DataManager::SetValue("tw_crypto_pwtype_0", 0);
++	DataManager::SetValue(TW_INTERNAL_PATH, Storage_Path);
++	DataManager::SetValue("tw_storage_path", Storage_Path);
++	DataManager::SetValue("tw_settings_path", Storage_Path);
++	PartitionManager.Add_MTP_Storage(MTP_Storage_ID); // Only adds if MTP is already enabled.
++	LOGINFO("Fresh userdata: prepared /data/media staging storage; Android will initialize FBE users.\n");
++	return true;
+ }
+ 
+ void TWPartition::Recreate_Media_Folder(void) {
+--- a/partitionmanager.cpp
++++ b/partitionmanager.cpp
+@@ -672,6 +672,8 @@
+ void TWPartitionManager::Decrypt_Data() {
+ 	#ifdef TW_INCLUDE_CRYPTO
+ 	TWPartition* Decrypt_Data = Find_Partition_By_Path("/data");
++	if (Decrypt_Data && Decrypt_Data->Prepare_Fresh_Data_Media())
++		return;
+ 	if (Decrypt_Data && Decrypt_Data->Is_Encrypted && !Decrypt_Data->Is_Decrypted) {
+ 		Set_Crypto_State();
+ 		TWPartition* Key_Directory_Partition = Find_Partition_By_Path(Decrypt_Data->Key_Directory);
+@@ -692,6 +694,8 @@
+ 				while (!Decrypt_Data->Mount(false) && --retry_count)
+ 					usleep(500);
+ 				if (Decrypt_Data->Mount(false)) {
++					if (Decrypt_Data->Prepare_Fresh_Data_Media())
++						return; // Metadata is mounted, but Android has not created FBE users.
+ 					if (!Decrypt_Data->Decrypt_FBE_DE()) {
+ 						LOGERR("Unable to decrypt FBE device\n");
+ 					}
+@@ -1982,6 +1986,8 @@
+ 		usleep(2048);
+ 		#endif
+ 		TWFunc::check_and_run_script(TW_FORMAT_DATA_SCRIPT, "Format Data Script");
++		if (dat->Prepare_Fresh_Data_Media())
++			Update_System_Details();
+ 	}
+ 	return ret;
+ }
+--- a/partitions.hpp
++++ b/partitions.hpp
+@@ -165,6 +165,7 @@
+ 	bool Wipe_Encryption();                                                   // Ignores wipe commands for /data/media devices and formats the original block device
+ 	void Check_FS_Type();                                                     // Checks the fs type using blkid, does not do anything on MTD / yaffs2 because this crashes on some devices
+ 	bool Update_Size(bool Display_Error);                                     // Updates size information
++	bool Prepare_Fresh_Data_Media();                                          // Prepares staging storage only on uninitialized mounted userdata
+ 	void Recreate_Media_Folder();                                             // Recreates the /data/media folder
+ 
+ 	bool Flash_Image(PartitionSettings *part_settings);                       // Flashes an image to the partition

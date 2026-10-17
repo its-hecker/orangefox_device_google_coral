@@ -25,6 +25,8 @@ git -C "$build_root/sync-tools" checkout 53a303ecfb622c516082d3e61dbaa7d9f02f012
     ./orangefox_sync.sh --branch 12.1 --path "$build_root/android"
 ) 2>&1 | tee "$port_root/logs/sync.log"
 cd "$build_root/android"
+# Keep core patch applicability and the tested decryption implementation fixed.
+git -C bootable/recovery checkout cbcc4f713dbef98d76d6d2cfd019b1ebfd9418e9
 mkdir -p device/google/coral
 tar -C "$port_root" --exclude=.git --exclude=logs --exclude=artifacts --exclude=kernel-checkpoint --exclude=ci-kernel --exclude=__pycache__ -cf - . | tar -C device/google/coral -xf -
 # Resolve the dependencies supplied by the upstream device tree. Avoid implicit
@@ -64,6 +66,11 @@ prepdecrypt_patch="$port_root/patches/0002-read-system-properties-from-both-layo
 git -C device/qcom/twrp-common apply --check "$prepdecrypt_patch"
 git -C device/qcom/twrp-common apply "$prepdecrypt_patch"
 python3 "$port_root/scripts/test_prepdecrypt.py" "$build_root/android/device/qcom/twrp-common/crypto/system/bin/prepdecrypt.sh"
+# Prepare only uninitialized userdata, keeping Android's FBE keys/users untouched.
+fresh_data_patch="$port_root/patches/0004-prepare-fresh-data-media.patch"
+git -C bootable/recovery apply --check "$fresh_data_patch"
+git -C bootable/recovery apply "$fresh_data_patch"
+python3 "$port_root/scripts/test_fresh_data_media.py" "$build_root/android/bootable/recovery"
 if [[ "$build_stage" = recovery ]]; then
     python3 "$port_root/scripts/kernel_checkpoint.py" import "$build_root/android" "$port_root" "$checkpoint"
 fi
@@ -112,7 +119,7 @@ boot_firmware_patch=$(get_build_var BOOT_SECURITY_PATCH)
 maintainer=$(get_build_var OF_MAINTAINER)
 [[ "$maintainer" = Hecker ]]
 [[ -n "$boot_os_version" && -n "$boot_os_patch" && -n "$boot_firmware_patch" ]]
-version_checks=(--maintainer "$maintainer" --maintainer-label '%of_maintainer% (Maintainer)'
+version_checks=(--fresh-data-media --maintainer "$maintainer" --maintainer-label '%of_maintainer% (Maintainer)'
     --maintainer-avatar "$port_root/theme/maintainer.png" --channel-url https://t.me/pixel4seriesupdates
     --os-version "$boot_os_version" --os-patch-level "$boot_os_patch"
     --avb-tool "$build_root/android/external/avb/avbtool.py" --boot-security-patch "$boot_firmware_patch")

@@ -5,7 +5,7 @@ import pathlib
 import struct
 import subprocess
 import sys
-from validate_recovery_runtime import validate_runtime, validate_branding
+from validate_recovery_runtime import ramdisk_files, validate_runtime, validate_branding
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('image', type=pathlib.Path)
 parser.add_argument('--kernel', type=pathlib.Path)
@@ -20,6 +20,7 @@ parser.add_argument('--maintainer-label', help='Expected literal About label con
 parser.add_argument('--maintainer-avatar', type=pathlib.Path, help='Expected packaged 192x192 maintainer PNG')
 parser.add_argument('--support-url', help='Expected support URL on the packaged About page')
 parser.add_argument('--channel-url', help='Expected channel URL on the packaged About page')
+parser.add_argument('--fresh-data-media', action='store_true', help='Require the compiled fresh-userdata storage fix')
 args = parser.parse_args()
 image = args.image.read_bytes()
 assert 1660 <= len(image) <= 64 * 1024 * 1024, 'Invalid coral boot image size'
@@ -62,6 +63,10 @@ if args.dtb:
 if args.keymaster_version:
     ramdisk_offset = page_size + align(kernel_size)
     validate_runtime(image[ramdisk_offset:ramdisk_offset + ramdisk_size], args.keymaster_version)
+if args.fresh_data_media:
+    ramdisk_offset = page_size + align(kernel_size)
+    recovery = ramdisk_files(image[ramdisk_offset:ramdisk_offset + ramdisk_size]).get('system/bin/recovery', b'')
+    assert b'Fresh userdata: prepared /data/media staging storage; Android will initialize FBE users.' in recovery, 'Fresh-data storage implementation is missing from the recovery executable'
 if args.maintainer or args.support_url or args.channel_url or args.maintainer_label or args.maintainer_avatar:
     ramdisk_offset = page_size + align(kernel_size)
     validate_branding(image[ramdisk_offset:ramdisk_offset + ramdisk_size], args.maintainer, args.support_url,

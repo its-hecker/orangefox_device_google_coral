@@ -49,3 +49,42 @@ cat avatar, in the existing 192x192 About image resource.
 `OF_MAINTAINER := Hecker` in `twrp.mk` sets that name; the older
 `FOX_MAINTAINER` environment variable does not set this About field. Image
 validation checks the executable, packaged About XML and exact avatar bytes.
+
+`0004-prepare-fresh-data-media.patch` applies to `partition.cpp`,
+`partitionmanager.cpp` and `partitions.hpp` at OrangeFox core revision
+`cbcc4f713dbef98d76d6d2cfd019b1ebfd9418e9`, now explicitly selected by the
+build script. It handles uninitialized userdata before normal FBE setup,
+after metadata decryption mounts `/data`, and after a successful Format Data.
+
+The October 17 Coral logs show metadata decryption and the f2fs mount succeed,
+but `/data/media` is absent, `/sdcard` is not bind mounted, and USB is in ADB
+mode. The tester confirmed file transfers after manually creating
+`/data/media` with media_rw ownership, binding it to `/sdcard`, and enabling
+MTP. This validates the workaround for that session; the compiled fix still
+requires device testing.
+
+The helper accepts only a writable mounted ext4/f2fs userdata filesystem whose
+root contains directories named `lost+found`, `recovery`, or `media`, or is
+empty. Any other entry, including FBE key/user directories, rejects the helper.
+Symlink entries, an existing `media/0`, and a media directory with an encryption
+policy also reject it. Mount, inspection, labeling and bind failures do not
+mark storage unlocked. Existing encrypted installations use the original
+decryption flow. This deliberately conservative check can decline a partially
+initialized or unfamiliar layout; it does not attempt to repair those layouts.
+
+For accepted layouts, recovery creates only `/data/media`, applies its label
+when file_contexts is available, sets 1023:1023 and mode 0770, binds `/sdcard`,
+and updates recovery's storage state. It retains the metadata mapping and
+fstab encryption configuration. It neither creates `media/0` nor changes any
+fscrypt policy, key blob, ROM property or forced-encryption setting. Android
+must initialize its FBE users. MTP uses the normal server and preference;
+an already running server receives the refreshed storage entry.
+
+The host test compiles the actual patched helper, `Decrypt_Data` and
+`Format_Data`, using a temporary directory tree and substituted mount, metadata,
+SELinux and MTP operations. It checks direct and metadata-assisted startup,
+same-session formatting, retained staged files, ext4/f2fs, existing key/user
+layouts, symlinks, read-only/tmpfs mounts, and inspection/bind failures. The
+image validator also requires the compiled fix's log marker in the packaged
+recovery executable. These checks do not exercise real fscrypt, F2FS mounts,
+USB enumeration, device PIN unlocking or the subsequent Android first boot.
