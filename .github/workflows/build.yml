@@ -1,7 +1,7 @@
 name: Experimental coral OrangeFox
 on:
   push:
-    branches: [main, fix/fresh-data-storage]
+    branches: [main, fix/fresh-data-storage, fix/october-keymaster-metadata]
     paths-ignore: [release/**, .github/workflows/release.yml, README.md, TESTING.md]
   workflow_dispatch:
 permissions:

@@ -2,6 +2,7 @@
 """Structural checks only; these cannot prove bootability or decryption."""
 import argparse
 import pathlib
+import re
 import struct
 import subprocess
 import sys
@@ -11,7 +12,7 @@ parser.add_argument('image', type=pathlib.Path)
 parser.add_argument('--kernel', type=pathlib.Path)
 parser.add_argument('--dtb', type=pathlib.Path)
 parser.add_argument('--keymaster-version', help='Check Coral decryption startup using the build configuration')
-parser.add_argument('--os-version', help='Expected Keymaster OS version in the boot header')
+parser.add_argument('--os-version', help='Expected Keymaster OS version in the boot header and AVB descriptor')
 parser.add_argument('--os-patch-level', help='Expected system patch month in the boot header (YYYY-MM-DD)')
 parser.add_argument('--avb-tool', type=pathlib.Path, help='Build-tree avbtool.py for inspecting boot AVB metadata')
 parser.add_argument('--boot-security-patch', help='Expected boot firmware patch in the AVB property descriptor')
@@ -41,12 +42,22 @@ if args.os_version:
     assert os_components == expected, f'Boot header OS version {os_components} does not match {expected}'
 if args.os_patch_level:
     assert patch_month == args.os_patch_level[:7], f'Boot header patch {patch_month} does not match {args.os_patch_level[:7]}'
-if args.boot_security_patch:
-    assert args.avb_tool, 'An AVB tool is required to check the boot firmware patch'
+if args.os_version or args.boot_security_patch:
+    assert args.avb_tool, 'An AVB tool is required to check the boot version metadata'
     avb_info = subprocess.check_output(
         [sys.executable, str(args.avb_tool), 'info_image', '--image', str(args.image)], text=True)
-    expected = f"Prop: com.android.build.boot.security_patch -> '{args.boot_security_patch}'"
-    assert expected in avb_info, 'Boot AVB firmware patch differs from the device configuration'
+    def avb_property(name):
+        values = re.findall(r"^\s*Prop: " + re.escape(name) + r" -> '([^']*)'\s*$", avb_info, re.MULTILINE)
+        assert len(values) == 1, f'Expected exactly one AVB property {name}, got {values}'
+        return values[0]
+    if args.os_version:
+        actual = avb_property('com.android.build.boot.os_version')
+        components = tuple(int(v) for v in actual.split('.'))
+        components += (0,) * (3 - len(components))
+        assert components == expected, f'Boot AVB OS version {actual} does not match {args.os_version}'
+    if args.boot_security_patch:
+        actual = avb_property('com.android.build.boot.security_patch')
+        assert actual == args.boot_security_patch, 'Boot AVB firmware patch differs from the device configuration'
 assert kernel_size > 0 and ramdisk_size > 0, 'Missing kernel or recovery ramdisk'
 align = lambda size: (size + page_size - 1) // page_size * page_size
 second_size, = struct.unpack_from('<I', image, 24)

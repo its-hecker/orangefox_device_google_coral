@@ -1,5 +1,22 @@
 # Pixel 4 XL bring-up
 
+## HeckerOS October metadata test
+
+Branch `fix/october-keymaster-metadata` retains the fresh-storage and earlier
+runtime fixes, with boot OS version 17 in both the header and AVB descriptor,
+system patch 2026-10-01, and boot/vendor firmware patches 2022-10-05. These
+values match the supplied `HeckerOS_coral-17.0-20261101-1932.zip` boot image;
+the recovery platform itself remains Android 12.1 / SDK 32.
+
+Temporarily boot the new Actions image on the existing HeckerOS installation.
+Do not format data to test it. Confirm the PIN prompt, unlock on the phone,
+then check recognizable existing files and an MTP transfer. If the prompt is
+still absent, collect recovery.log, logcat and dmesg immediately. The November 1
+failure occurred while opening the metadata key, before PIN-based unlocking;
+an empty Fox folder does not prove that userdata has been decrypted or erased.
+The host checks validate packaging only; decryption is not yet confirmed for
+this ROM/build.
+
 ## Freshly formatted storage test (October 17 fix)
 
 Use the image from branch `fix/fresh-data-storage` on Coral. If data is already

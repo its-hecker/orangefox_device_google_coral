@@ -1,0 +1,15 @@
+diff --git a/core/Makefile b/core/Makefile
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -3611,9 +3611,10 @@ BOARD_AVB_SYSTEM_EXT_ADD_HASHTREE_FOOTER_ARGS += \
+     --prop com.android.build.system_ext.os_version:$(PLATFORM_VERSION_LAST_STABLE) \
+     --prop com.android.build.system_ext.security_patch:$(PLATFORM_SECURITY_PATCH)
+ 
++BOARD_AVB_BOOT_OS_VERSION ?= $(PLATFORM_VERSION_LAST_STABLE)
+ BOARD_AVB_BOOT_ADD_HASH_FOOTER_ARGS += \
+     --prop com.android.build.boot.fingerprint:$(BUILD_FINGERPRINT_FROM_FILE) \
+-    --prop com.android.build.boot.os_version:$(PLATFORM_VERSION_LAST_STABLE)
++    --prop com.android.build.boot.os_version:$(BOARD_AVB_BOOT_OS_VERSION)
+ 
+ BOARD_AVB_VENDOR_BOOT_ADD_HASH_FOOTER_ARGS += \
+     --prop com.android.build.vendor_boot.fingerprint:$(BUILD_FINGERPRINT_FROM_FILE) \

@@ -48,6 +48,11 @@ PY
 # A whole-tree repo sync here would attempt to overwrite that checkout.
 mapfile -t dependency_paths < <(python3 -c 'import json; print("\n".join(d["target_path"] for d in json.load(open("device/google/coral/twrp.dependencies"))))')
 repo sync -c -j4 --no-clone-bundle --no-tags "${dependency_paths[@]}" 2>&1 | tee "$port_root/logs/dependencies.log"
+# Match the boot AVB OS descriptor to the header without changing the build SDK.
+boot_version_patch="$port_root/patches/0005-match-boot-avb-os-version.patch"
+git -C build/make apply --check "$boot_version_patch"
+git -C build/make apply "$boot_version_patch"
+python3 "$port_root/scripts/test_boot_version_metadata.py" "$build_root/android/build/make/core/Makefile" "$build_root/android/external/avb/avbtool.py"
 # The theme keeps SVG handles square while Coral scales X and Y differently.
 # Patch the renderer before either stage records its source identity.
 support_patch="$port_root/patches/0003-show-coral-maintainer-support.patch"

@@ -88,3 +88,24 @@ layouts, symlinks, read-only/tmpfs mounts, and inspection/bind failures. The
 image validator also requires the compiled fix's log marker in the packaged
 recovery executable. These checks do not exercise real fscrypt, F2FS mounts,
 USB enumeration, device PIN unlocking or the subsequent Android first boot.
+
+`0005-match-boot-avb-os-version.patch` applies to `core/Makefile` in
+TeamWin/android_build `android-12.1`, tested at
+`1b692e2248609f50a27c48cce53b7445cecdcfc5`. It adds a boot-only OS version
+override. Coral sets it to 17, matching its existing boot header override;
+the Android 12.1 build SDK and other partition version defaults remain intact.
+
+The supplied November 1 HeckerOS boot image encodes Android 17 and October
+2026 in its header, with AVB boot OS version 17 and firmware patch 2022-10-05.
+The October 17 OrangeFox image instead encoded September in its header and
+12 in the AVB boot OS descriptor. This branch uses system patch 2026-10-01
+and fixes that conflicting descriptor. Boot/vendor firmware patches retain
+2022-10-05. Matching metadata is a compatibility change, not proof that the
+recovery platform contains October security fixes or can decrypt this ROM.
+
+The host test evaluates the actual Make rules and generates real AVB footers.
+It accepts the matching image and rejects Android 12 in the descriptor,
+September in the header, an incorrectly bumped firmware patch, and duplicate
+OS descriptors. Artifact validation checks both version representations and
+requires exactly one descriptor for each checked property. Phone testing is
+still required for metadata decryption, the PIN prompt and existing files.
