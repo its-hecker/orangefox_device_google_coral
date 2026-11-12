@@ -41,11 +41,12 @@ def main():
     assert 'com.android.build.boot.security_patch:2022-10-05' in configured
     # Each case is a synthetic header-v2 image with a real AVB hash footer.
     cases = [
-        ('matching', configured, 10, True, ''),
-        ('legacy-avb-version', default, 10, False, 'Boot AVB OS version'),
+        ('matching', configured, 11, True, ''),
+        ('legacy-avb-version', default, 11, False, 'Boot AVB OS version'),
         ('september-header', configured, 9, False, 'Boot header patch'),
-        ('wrong-firmware-patch', [x.replace('security_patch:2022-10-05', 'security_patch:2026-10-01') for x in configured], 10, False, 'Boot AVB firmware patch'),
-        ('duplicate-os-property', configured + ['--prop', 'com.android.build.boot.os_version:12'], 10, False, 'Expected exactly one AVB property'),
+        ('october-header', configured, 10, False, 'Boot header patch'),
+        ('wrong-firmware-patch', [x.replace('security_patch:2022-10-05', 'security_patch:2026-11-01') for x in configured], 11, False, 'Boot AVB firmware patch'),
+        ('duplicate-os-property', configured + ['--prop', 'com.android.build.boot.os_version:12'], 11, False, 'Expected exactly one AVB property'),
     ]
     with tempfile.TemporaryDirectory() as directory:
         for name, properties, month, succeeds, error in cases:
@@ -63,7 +64,7 @@ def main():
                             '--partition_size', '1048576'] + properties, check=True)
             result = subprocess.run([
                 sys.executable, str(validator), str(image), '--os-version', '17',
-                '--os-patch-level', '2026-10-01', '--boot-security-patch', '2022-10-05',
+                '--os-patch-level', '2026-11-01', '--boot-security-patch', '2022-10-05',
                 '--avb-tool', str(args.avbtool)], text=True, capture_output=True)
             if (result.returncode == 0) != succeeds or (error and error not in result.stderr):
                 raise AssertionError(f'{name}: unexpected validation result\n{result.stdout}{result.stderr}')

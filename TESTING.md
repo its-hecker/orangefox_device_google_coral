@@ -1,5 +1,35 @@
 # Pixel 4 XL bring-up
 
+## HeckerOS November ASB metadata test (November 12, 2026)
+
+Branch `fix/november-asb-20261112` is based on
+`fix/october-keymaster-metadata` and retains its decryption, storage,
+Keymaster/Gatekeeper, boot AVB and battery fixes. The supplied November
+HeckerOS Coral `boot.img` has SHA-256
+`3439a85c2eb3b4518e84c9f3327089abfa3b87e44ab6b76a66e2b3a35451e93d`.
+Its boot header is version 2 with Android 17.0.0 and patch **2026-11**.
+Its AVB boot descriptor reports Android **17** and boot firmware patch
+**2022-10-05**. OrangeFox now targets `PLATFORM_SECURITY_PATCH=2026-11-01`,
+while keeping `BOOT_SECURITY_PATCH` and `VENDOR_SECURITY_PATCH` aligned
+with the unchanged firmware (2022-10-05). The recovery source still builds
+from Android 12.1; setting metadata to November does **not** apply November
+ASB fixes to recovery binaries.
+
+The host boot-metadata test now accepts November and rejects both September
+and October header dates, a legacy Android 12 AVB descriptor, altered boot
+firmware patch metadata and duplicate AVB version properties. The produced
+image validator verifies the built header and AVB descriptor, plus the packaged
+crypto service startup and the earlier fresh-userdata fix.
+
+Device testing is still **required**. On a Pixel 4 XL (`coral`) with an
+unlocked bootloader, temporarily boot the CI artifact with
+`fastboot boot OrangeFox-unofficial-coral.img` (do not flash to a slot).
+Do **not** format data. Check that the PIN prompt appears, that existing
+files are recognizable after unlock, and that MTP/ADB can read a known file.
+Also check battery percentage, Screen settings, the console, and reboot.
+If decryption fails, collect `/tmp/recovery.log`, `logcat`, and `dmesg`
+without resetting keys or userdata. Reinstall/release only after confirmation.
+
 ## HeckerOS October metadata test
 
 Branch `fix/october-keymaster-metadata` retains the fresh-storage and earlier

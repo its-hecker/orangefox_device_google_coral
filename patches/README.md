@@ -109,3 +109,16 @@ September in the header, an incorrectly bumped firmware patch, and duplicate
 OS descriptors. Artifact validation checks both version representations and
 requires exactly one descriptor for each checked property. Phone testing is
 still required for metadata decryption, the PIN prompt and existing files.
+
+## November 2026 HeckerOS reference image
+
+The supplied November Coral boot image (SHA-256
+`3439a85c2eb3b4518e84c9f3327089abfa3b87e44ab6b76a66e2b3a35451e93d`)
+encodes Android 17.0.0 and system patch 2026-11 in its v2 boot header;
+its AVB boot descriptor retains OS version 17 and boot firmware patch
+2022-10-05. The dedicated November branch updates only the recovery system
+patch target, retaining the October AVB, Keymaster, Gatekeeper and storage
+fixes. The test suite rejects older headers and incorrect firmware metadata.
+This is boot/decryption metadata alignment, not a backport of November
+platform vulnerabilities fixes. Temporary Coral device testing remains
+necessary before release.

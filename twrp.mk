@@ -1,10 +1,10 @@
 OF_MAINTAINER := Hecker
 BOARD_USES_QCOM_FBE_DECRYPTION := true
 DISABLE_ARTIFACT_PATH_REQUIREMENTS := true
-# Match the supplied HeckerOS Android 17 / October 2026 Keymaster metadata.
+# Match the supplied HeckerOS Android 17 / November 2026 Keymaster metadata.
 # This is not a claim that the Android 12.1 recovery has newer platform fixes.
 CORAL_RECOVERY_OS_VERSION := 17
-PLATFORM_SECURITY_PATCH := 2026-10-01
+PLATFORM_SECURITY_PATCH := 2026-11-01
 # The 12.1 build uses PLATFORM_VERSION_LAST_STABLE for the boot header; changing
 # PLATFORM_VERSION alone does not change its encoded OS version.
 BOARD_MKBOOTIMG_ARGS += --os_version $(CORAL_RECOVERY_OS_VERSION)
