@@ -79,7 +79,14 @@ fresh_data_patch="$port_root/patches/0004-prepare-fresh-data-media.patch"
 git -C bootable/recovery apply --check "$fresh_data_patch"
 git -C bootable/recovery apply "$fresh_data_patch"
 python3 "$port_root/scripts/test_fresh_data_media.py" "$build_root/android/bootable/recovery"
-if [[ "$build_stage" = recovery ]]; then
+if [[ -n "${HECKER_A17_ROM_BOOT:-}" ]]; then
+    # Build a standalone recovery using the exact current Android 17 ROM kernel
+    # and DTB. This is NOT a dual-mode boot image and must not enter an OTA.
+    [[ "$build_stage" = recovery ]] || { echo "HECKER_A17_ROM_BOOT requires recovery stage" >&2; exit 1; }
+    [[ "${HECKER_A17_ROM_BOOT}" = /* ]] || { echo "HECKER_A17_ROM_BOOT must be absolute" >&2; exit 1; }
+    python3 "$port_root/scripts/stage_a17_rom_kernel.py" \
+        "$HECKER_A17_ROM_BOOT" "$build_root/android/device/google/coral"
+elif [[ "$build_stage" = recovery ]]; then
     python3 "$port_root/scripts/kernel_checkpoint.py" import "$build_root/android" "$port_root" "$checkpoint"
 fi
 export FOX_BUILD_DEVICE=coral
@@ -143,8 +150,14 @@ out=out/target/product/coral
 image="$out/boot.img"
 test -s "$image"
 if [[ "$build_stage" = recovery ]]; then
-    python3 "$port_root/scripts/validate_image.py" "$image" --kernel "$checkpoint/Image.lz4" --dtb "$checkpoint/dtb.img" --keymaster-version "$OF_DEFAULT_KEYMASTER_VERSION" "${version_checks[@]}"
-    cp "$checkpoint/metadata.json" "$port_root/artifacts/kernel-metadata.json"
+    if [[ -n "${HECKER_A17_ROM_BOOT:-}" ]]; then
+        staged="$build_root/android/device/google/coral/ci-kernel"
+        python3 "$port_root/scripts/validate_image.py" "$image" --kernel "$staged/Image.lz4" --dtb "$staged/dtb/coral.dtb" --keymaster-version "$OF_DEFAULT_KEYMASTER_VERSION" "${version_checks[@]}"
+        cp "$staged/metadata.json" "$port_root/artifacts/kernel-metadata.json"
+    else
+        python3 "$port_root/scripts/validate_image.py" "$image" --kernel "$checkpoint/Image.lz4" --dtb "$checkpoint/dtb.img" --keymaster-version "$OF_DEFAULT_KEYMASTER_VERSION" "${version_checks[@]}"
+        cp "$checkpoint/metadata.json" "$port_root/artifacts/kernel-metadata.json"
+    fi
 else
     python3 "$port_root/scripts/validate_image.py" "$image" --keymaster-version "$OF_DEFAULT_KEYMASTER_VERSION" "${version_checks[@]}"
 fi
