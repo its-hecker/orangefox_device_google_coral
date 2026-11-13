@@ -56,8 +56,11 @@ jobs:
             gh release download "$PAYLOAD_TAG" --pattern "$payload" --output existing.cpio.gz
             cmp "$payload" existing.cpio.gz
           else
+            # GitHub Actions cannot create a release tag at a historical commit
+            # with workflow changes. The artifact's verified source SHA is in
+            # the release notes and source manifest.
             gh release create "$PAYLOAD_TAG" "$payload" recovery-ci/source-manifest.xml \
-              --target "$SOURCE_COMMIT" --prerelease --latest=false \
+              --prerelease --latest=false \
               --title 'Hecker Recovery 2.0 Coral ROM build input' \
               --notes "OrangeFox recovery ramdisk for the experimental Coral ROM branch. It is not a boot image. Source and rebuild instructions: https://github.com/$GH_REPO/blob/$SOURCE_COMMIT/HECKER_RECOVERY.md"
           fi
