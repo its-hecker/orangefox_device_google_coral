@@ -62,6 +62,9 @@ else
     git -C bootable/recovery apply --reverse --check "$support_patch"
 fi
 install -m 644 "$port_root/theme/maintainer.png" bootable/recovery/gui/theme/portrait_hdpi/images/Default/About/maintainer.png
+# Hecker Recovery UI extends the November-tested OrangeFox core without changing
+# Keymaster, partition mounting, image installation or USB service behavior.
+python3 "$port_root/scripts/hecker_recovery_theme.py" "$build_root/android/bootable/recovery" "$port_root/theme/caracal.png"
 slider_patch="$port_root/patches/0001-fit-slider-handles-to-scaled-images.patch"
 git -C bootable/recovery apply --check "$slider_patch"
 git -C bootable/recovery apply "$slider_patch"
@@ -124,8 +127,8 @@ boot_firmware_patch=$(get_build_var BOOT_SECURITY_PATCH)
 maintainer=$(get_build_var OF_MAINTAINER)
 [[ "$maintainer" = Hecker ]]
 [[ -n "$boot_os_version" && -n "$boot_os_patch" && -n "$boot_firmware_patch" ]]
-version_checks=(--fresh-data-media --maintainer "$maintainer" --maintainer-label '%of_maintainer% (Maintainer)'
-    --maintainer-avatar "$port_root/theme/maintainer.png" --channel-url https://t.me/pixel4seriesupdates
+version_checks=(--fresh-data-media --maintainer "$maintainer" --maintainer-label 'Hecker Recovery 2.0 - %of_maintainer%'
+    --maintainer-avatar "$port_root/theme/maintainer.png" --channel-url https://t.me/pixel4seriesupdates --hecker-caracal "$port_root/theme/caracal.png"
     --os-version "$boot_os_version" --os-patch-level "$boot_os_patch"
     --avb-tool "$build_root/android/external/avb/avbtool.py" --boot-security-patch "$boot_firmware_patch")
 if [[ "$build_stage" = kernel ]]; then
@@ -145,8 +148,8 @@ if [[ "$build_stage" = recovery ]]; then
 else
     python3 "$port_root/scripts/validate_image.py" "$image" --keymaster-version "$OF_DEFAULT_KEYMASTER_VERSION" "${version_checks[@]}"
 fi
-cp "$image" "$port_root/artifacts/OrangeFox-unofficial-coral.img"
+cp "$image" "$port_root/artifacts/HeckerRecovery-2.0-coral.img"
 repo manifest -r -o "$port_root/artifacts/source-manifest.xml"
 git -C "$port_root" rev-parse HEAD > "$port_root/artifacts/device-tree-commit.txt"
 cd "$port_root/artifacts"
-sha256sum OrangeFox-unofficial-coral.img > SHA256SUMS
+sha256sum HeckerRecovery-2.0-coral.img > SHA256SUMS
