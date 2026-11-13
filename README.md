@@ -1,5 +1,11 @@
 # OrangeFox for Google Pixel 4 XL (coral)
 
+> **Hecker Recovery 2.0 development:** this branch uses the proven November
+> OrangeFox fixes as its custom-recovery backend. See
+> [HECKER_RECOVERY.md](HECKER_RECOVERY.md). The HeckerOS ROM's stock recovery
+> has not been replaced; the custom image remains experimental.
+
+
 Maintainer: **Hecker** ([its-hecker](https://github.com/its-hecker)).
 Support: [Pixel 4 Series](https://t.me/pixel4seriesofficial).
 Channel: [Pixel 4 Series Updates](https://t.me/pixel4seriesupdates).
