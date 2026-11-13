@@ -1,7 +1,7 @@
-name: Experimental coral OrangeFox
+name: Coral Hecker Recovery 2.0 / OrangeFox baseline
 on:
   push:
-    branches: [main, fix/fresh-data-storage, fix/october-keymaster-metadata, fix/november-asb-20261112]
+    branches: [main, fix/fresh-data-storage, fix/october-keymaster-metadata, fix/november-asb-20261112, feat/hecker-recovery-2.0]
     paths-ignore: [release/**, .github/workflows/release.yml, README.md, TESTING.md]
   workflow_dispatch:
 permissions:
@@ -30,9 +30,16 @@ jobs:
             git commit -m 'Import pinned TeamWin coral device tree with original notices'
             git push origin HEAD:main
           fi
+  theme-contract:
+    name: Validate Hecker Recovery theme adapter
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify source transformations
+        run: python3 -m unittest discover -s scripts -p test_hecker_theme.py -v
   kernel:
     name: Build and checkpoint kernel
-    needs: import-tree
+    needs: [import-tree, theme-contract]
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps:
@@ -88,6 +95,6 @@ jobs:
       - name: Upload structurally validated experimental image
         uses: actions/upload-artifact@v6
         with:
-          name: OrangeFox-unofficial-coral-${{ github.run_id }}-${{ github.run_attempt }}
+          name: HeckerRecovery-2.0-coral-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/
           if-no-files-found: error
