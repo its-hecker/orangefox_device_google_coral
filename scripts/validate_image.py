@@ -6,7 +6,7 @@ import re
 import struct
 import subprocess
 import sys
-from validate_recovery_runtime import ramdisk_files, validate_runtime, validate_branding
+from validate_recovery_runtime import ramdisk_files, validate_runtime, validate_branding, validate_hecker_ui
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('image', type=pathlib.Path)
 parser.add_argument('--kernel', type=pathlib.Path)
@@ -22,6 +22,7 @@ parser.add_argument('--maintainer-avatar', type=pathlib.Path, help='Expected pac
 parser.add_argument('--support-url', help='Expected support URL on the packaged About page')
 parser.add_argument('--channel-url', help='Expected channel URL on the packaged About page')
 parser.add_argument('--fresh-data-media', action='store_true', help='Require the compiled fresh-userdata storage fix')
+parser.add_argument('--hecker-caracal', type=pathlib.Path, help='Require the exact Hecker Recovery UI and caracal')
 args = parser.parse_args()
 image = args.image.read_bytes()
 assert 1660 <= len(image) <= 64 * 1024 * 1024, 'Invalid coral boot image size'
@@ -82,4 +83,7 @@ if args.maintainer or args.support_url or args.channel_url or args.maintainer_la
     ramdisk_offset = page_size + align(kernel_size)
     validate_branding(image[ramdisk_offset:ramdisk_offset + ramdisk_size], args.maintainer, args.support_url,
                      args.maintainer_label, args.maintainer_avatar, args.channel_url)
+if args.hecker_caracal:
+    ramdisk_offset = page_size + align(kernel_size)
+    validate_hecker_ui(image[ramdisk_offset:ramdisk_offset + ramdisk_size], args.hecker_caracal)
 print(f'Structural checks passed: {len(image)} bytes; kernel, ramdisk and DTB present; OS {os_components}, system patch {patch_month}')
