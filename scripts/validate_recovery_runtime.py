@@ -177,3 +177,35 @@ def validate_branding(packed, maintainer, support_url, maintainer_label=None, ma
     if channel_url:
         details.append(f'channel {channel_url}')
     print('About checks passed: ' + '; '.join(details))
+
+
+def validate_hecker_ui(packed, caracal_path):
+    """Require the packaged custom UI and existing caracal asset."""
+    files = ramdisk_files(packed)
+    def xml(path):
+        raw = files.get(path)
+        if not raw:
+            raise ValueError('Missing custom recovery resource: ' + path)
+        return ET.fromstring(raw)
+    splash = xml('twres/splash.xml')
+    texts = {n.text for n in splash.iter('text')}
+    if 'HeckerOS' not in texts or 'Recovery' not in texts:
+        raise ValueError('Splash does not display HeckerOS Recovery branding')
+    images = {n.get('filename') for n in splash.iter('image')}
+    if 'Default/About/hecker_caracal.png' not in images:
+        raise ValueError('Custom recovery splash does not select the caracal')
+    asset = files.get('twres/images/Default/About/hecker_caracal.png', b'')
+    if not asset or hashlib.sha256(asset).digest() != hashlib.sha256(pathlib.Path(caracal_path).read_bytes()).digest():
+        raise ValueError('Packaged caracal artwork is absent or changed')
+    accent = xml('twres/themes/accent.xml')
+    colors = [n.get('tint') or n.get('value') for n in accent.iter()
+              if n.get('tint') or n.get('value')]
+    if '#82A9FF' not in colors or '#ed6f02' in colors:
+        raise ValueError('The Hecker Recovery palette did not replace default orange')
+    landing = xml('twres/pages/main.xml')
+    if 'Hecker Recovery 2.0' not in {n.text for n in landing.iter('text')}:
+        raise ValueError('Custom recovery welcome page is missing')
+    if not {'main', 'navbar', 'welcome', 'fastboot'} <= {
+            n.get('name') for n in landing.iter('page')}:
+        raise ValueError('The theme removed essential recovery pages')
+    print('Hecker Recovery UI verified: caracal, blue accents, splash, welcome and navigation')
