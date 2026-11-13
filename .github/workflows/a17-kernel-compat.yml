@@ -1,0 +1,21 @@
+name: Hecker Recovery Android 17 kernel staging checks
+on:
+  push:
+    branches: [feat/hecker-recovery-2.0]
+    paths:
+      - 'scripts/stage_a17_rom_kernel.py'
+      - 'scripts/test_stage_a17_rom_kernel.py'
+      - 'scripts/build.sh'
+      - '.github/workflows/a17-kernel-compat.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  staging-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Android 17 boot-component sourcing and fail-closed checks
+        run: python3 -m unittest discover -s scripts -p test_stage_a17_rom_kernel.py -v
+      - name: Check shell syntax
+        run: bash -n scripts/build.sh
