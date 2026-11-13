@@ -2,7 +2,7 @@ name: Coral Hecker Recovery 2.0 / OrangeFox baseline
 on:
   push:
     branches: [main, fix/fresh-data-storage, fix/october-keymaster-metadata, fix/november-asb-20261112, feat/hecker-recovery-2.0]
-    paths-ignore: [release/**, .github/workflows/release.yml, README.md, TESTING.md]
+    paths-ignore: [release/**, .github/workflows/release.yml, .github/workflows/coral-rom-payload.yml, README.md, TESTING.md]
   workflow_dispatch:
 permissions:
   contents: read

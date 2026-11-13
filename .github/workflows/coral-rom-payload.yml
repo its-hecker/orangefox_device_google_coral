@@ -1,0 +1,63 @@
+name: Publish Coral ROM recovery payload
+
+on:
+  push:
+    branches: [feat/hecker-recovery-2.0]
+    paths: [.github/workflows/coral-rom-payload.yml]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/feat/hecker-recovery-2.0'
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_COMMIT: 353ac5784118f226bc6c5aee947fc5f9028a32e3
+      PAYLOAD_TAG: hecker-recovery2-coral-ramdisk-353ac57
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          artifact-ids: 14039870987
+          run-id: 43417408737
+          github-token: ${{ github.token }}
+          path: recovery-ci
+          merge-multiple: true
+      - name: Verify and extract the recovery ramdisk
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          import struct
+
+          artifact = Path('recovery-ci')
+          assert (artifact / 'device-tree-commit.txt').read_text().strip() == os.environ['SOURCE_COMMIT']
+          image = (artifact / 'HeckerRecovery-2.0-coral.img').read_bytes()
+          assert hashlib.sha256(image).hexdigest() == '1065bcbe9740223d3a52ff51c9d174a127e985eb28553f70c8fd0d0930279708'
+          assert image[:8] == b'ANDROID!'
+          kernel_size, ramdisk_size = struct.unpack_from('<I4xI', image, 8)
+          page, version = struct.unpack_from('<II', image, 36)
+          assert (page, version) == (4096, 2)
+          offset = page + (kernel_size + page - 1) // page * page
+          ramdisk = image[offset:offset + ramdisk_size]
+          assert hashlib.sha256(ramdisk).hexdigest() == '4905cf65045bfd3d73e6ae9d42e141f6706d0ff4bd1557b556fbb1b1db69eb05'
+          Path('hecker-recovery2-coral.cpio.gz').write_bytes(ramdisk)
+          PY
+      - name: Publish versioned build input
+        run: |
+          set -euo pipefail
+          payload=hecker-recovery2-coral.cpio.gz
+          if gh release view "$PAYLOAD_TAG" >/dev/null 2>&1; then
+            gh release download "$PAYLOAD_TAG" --pattern "$payload" --output existing.cpio.gz
+            cmp "$payload" existing.cpio.gz
+          else
+            gh release create "$PAYLOAD_TAG" "$payload" recovery-ci/source-manifest.xml \
+              --target "$SOURCE_COMMIT" --prerelease --latest=false \
+              --title 'Hecker Recovery 2.0 Coral ROM build input' \
+              --notes "OrangeFox recovery ramdisk for the experimental Coral ROM branch. It is not a boot image. Source and rebuild instructions: https://github.com/$GH_REPO/blob/$SOURCE_COMMIT/HECKER_RECOVERY.md"
+          fi
