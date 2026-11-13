@@ -75,3 +75,34 @@ python3 scripts/hecker_recovery_theme.py /path/to/bootable/recovery theme/caraca
 
 The image validator also checks the packaged dark/blue theme and caracal, in
 addition to all existing OrangeFox image/decryption safety checks.
+
+
+## Android 17 kernel parity (experimental, separate from ROM shipping)
+
+The Recovery 2.0 branch can now build the *standalone* OrangeFox recovery
+using the exact kernel and DTB embedded in a **current Coral HeckerOS 17
+boot.img**, rather than relying on the older independently built kernel.
+
+Run on a development machine with sufficient space for the OrangeFox 12.1 tree:
+
+```bash
+export HECKER_A17_ROM_BOOT=/absolute/path/to/current-heckeros-coral-boot.img
+bash scripts/build.sh /absolute/path/to/clean-recovery-build recovery
+```
+
+The source boot must have Android 17 metadata, a v2 boot header, 4096-byte
+pages and an LZ4 kernel. The staging script fails closed on invalid metadata,
+truncation, or preexisting staging outputs. The recovery validator then checks
+that the resulting standalone image includes the *exact* ROM kernel and DTB.
+Consequently any KernelSU code already embedded in that kernel is retained
+at the binary level; runtime compatibility still requires on-device testing.
+
+This does **not** create an Android 17 normal/recovery dual-mode ramdisk.
+The OrangeFox userspace still comes from its independently built Android
+12.1 recovery tree. The experimental standalone image MUST NOT replace the
+ROM boot image or be copied into the ROM OTA payload. No automatic ROM shipping
+is enabled by this option. A successful build is not proof of bootability.
+
+Required remaining gates: real-device standalone recovery boot and decryption;
+Android 17 recovery service and SELinux adaptation; audited dual-mode ramdisk;
+normal Android boot; KernelSU startup; both A/B slots; OTA and rollback.
